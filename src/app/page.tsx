@@ -9,6 +9,7 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, onSnapshot } from "firebase/firestore";
 import AuthModal from "@/components/auth-modal";
+import { toast } from "sonner";
 
 const ROAD_TYPES = [
   { id: 'footway', label: 'Footway', description: 'Pedestrian paths' },
@@ -230,7 +231,10 @@ export default function Home() {
             }));
           } catch (firestoreError: any) {
             console.error('Firestore error:', firestoreError);
-            alert(`Error saving to cloud: ${firestoreError.message}\n\nYour progress was not saved. Please check your internet connection and Firestore configuration.`);
+            toast.error('Failed to save progress', {
+              description: `${firestoreError.message}. Your progress was not saved. Please check your internet connection.`,
+              duration: 5000,
+            });
             newCapturedIds.forEach(id => {
               const cell = gridData.features.find((f: any) => f.properties.id === id);
               if (cell) cell.properties.captured = false;
@@ -245,12 +249,18 @@ export default function Home() {
         }
       }
 
-      alert(`Success! Captured ${newCapturedCount} new squares.`);
+      toast.success('Import successful!', {
+        description: `Captured ${newCapturedCount} new square${newCapturedCount !== 1 ? 's' : ''}. Keep exploring!`,
+        duration: 4000,
+      });
       setUploading(false);
 
     } catch (error) {
       console.error('Processing error:', error);
-      alert('Error processing GPX file');
+      toast.error('Import failed', {
+        description: 'There was an error processing your GPX file. Please try again.',
+        duration: 4000,
+      });
       setUploading(false);
     }
   };
