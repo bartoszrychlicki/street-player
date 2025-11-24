@@ -111,7 +111,7 @@ function generateUniformGridFast(pathsGeoJSON, gridSizeMeters = 20) {
 
     // Distance threshold: half diagonal of square + small buffer
     const diagonalMeters = Math.sqrt(2) * gridSizeMeters;
-    const thresholdKm = (diagonalMeters / 2 + 2) / 1000; // +2m buffer is enough if we check strictly
+    const thresholdKm = (diagonalMeters / 2 + 1) / 1000; // +1m buffer is enough if we check strictly
     // Note: User wanted coverage. A slightly larger buffer ensures no gaps on turns.
     // Let's stick to the previous logic roughly: 
     // If distance(center, path) <= threshold, then include.
