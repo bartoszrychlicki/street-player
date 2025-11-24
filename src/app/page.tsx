@@ -5,6 +5,10 @@ import MapView, { MapViewRef } from "@/components/map-view";
 import { gpx } from "@tmcw/togeojson";
 import * as turf from "@turf/turf";
 import { DOMParser } from "xmldom";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged, signOut, User } from "firebase/auth";
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, onSnapshot } from "firebase/firestore";
+import AuthModal from "@/components/auth-modal";
 
 const ROAD_TYPES = [
   { id: 'footway', label: 'Footway', description: 'Pedestrian paths' },
@@ -30,37 +34,108 @@ export default function Home() {
   const [showTooltip, setShowTooltip] = useState(false);
   const [gridData, setGridData] = useState<any>(null);
 
-  // Load grid and merge with localStorage
+  // Auth State
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Load grid data
   useEffect(() => {
     fetch('/oliwa-grid.geojson')
       .then(res => res.json())
       .then(data => {
         setGridData(data);
-        const total = data.features.length;
-
-        // Load captured state from localStorage
-        const savedCaptured = JSON.parse(localStorage.getItem('capturedSquares') || '[]');
-        const capturedSet = new Set(savedCaptured);
-
-        // Update grid with saved state
-        let capturedCount = 0;
-        data.features.forEach((f: any) => {
-          if (capturedSet.has(f.properties.id)) {
-            f.properties.captured = true;
-            capturedCount++;
-          }
-        });
-
-        setTotalGridCount(total);
-        setStats({ captured: 0, totalCaptured: capturedCount });
-
-        // Initial map update
-        if (mapRef.current) {
-          mapRef.current.updateGridData(data);
-        }
+        setTotalGridCount(data.features.length);
+        // Initial load will happen in auth effect
       })
       .catch(err => console.error('Failed to load grid:', err));
   }, []);
+
+  // Handle Auth & Data Sync
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+
+      if (!gridData) return;
+
+      if (currentUser) {
+        // User is logged in - Sync with Firestore
+        setIsSyncing(true);
+        const userRef = doc(db, "users", currentUser.uid);
+
+        try {
+          // Check for local data to migrate
+          const localCaptured = JSON.parse(localStorage.getItem('capturedSquares') || '[]');
+
+          if (localCaptured.length > 0) {
+            // Migrate local data to Firestore
+            const userDoc = await getDoc(userRef);
+
+            if (userDoc.exists()) {
+              await updateDoc(userRef, {
+                capturedSquares: arrayUnion(...localCaptured)
+              });
+            } else {
+              await setDoc(userRef, {
+                capturedSquares: localCaptured,
+                email: currentUser.email,
+                createdAt: new Date().toISOString()
+              });
+            }
+
+            // Clear local storage after migration
+            localStorage.removeItem('capturedSquares');
+            console.log("Migrated local data to cloud");
+          }
+
+          // Subscribe to real-time updates
+          const unsubscribeSnapshot = onSnapshot(userRef, (doc) => {
+            if (doc.exists()) {
+              const data = doc.data();
+              const capturedSquares = new Set(data.capturedSquares || []);
+              updateGridWithCaptured(capturedSquares);
+            } else {
+              // New user without doc
+              updateGridWithCaptured(new Set());
+            }
+            setIsSyncing(false);
+          });
+          return () => unsubscribeSnapshot(); // Cleanup snapshot listener
+
+        } catch (err) {
+          console.error("Sync error:", err);
+          setIsSyncing(false);
+        }
+      } else {
+        // Guest - Load from LocalStorage
+        const localCaptured = JSON.parse(localStorage.getItem('capturedSquares') || '[]');
+        updateGridWithCaptured(new Set(localCaptured));
+      }
+    });
+
+    return () => unsubscribe();
+  }, [gridData]); // Re-run when gridData loads
+
+  const updateGridWithCaptured = (capturedSet: Set<any>) => {
+    if (!gridData) return;
+
+    let capturedCount = 0;
+    // Create a deep copy to avoid mutating state directly if needed, 
+    // but here we modify properties for MapView
+    gridData.features.forEach((f: any) => {
+      if (capturedSet.has(f.properties.id)) {
+        f.properties.captured = true;
+        capturedCount++;
+      } else {
+        f.properties.captured = false;
+      }
+    });
+
+    setStats({ captured: 0, totalCaptured: capturedCount });
+    if (mapRef.current) {
+      mapRef.current.updateGridData({ ...gridData });
+    }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,48 +149,71 @@ export default function Home() {
       const geojson = gpx(gpxDoc);
 
       let newCapturedCount = 0;
-      const capturedSet = new Set(JSON.parse(localStorage.getItem('capturedSquares') || '[]'));
+      const newCapturedIds: string[] = [];
+
+      // Determine current captured set source
+      let currentCapturedSet = new Set<string>();
+      if (user) {
+        // For user, we'll get current state from Firestore via snapshot, 
+        // but for calculation we need to know what's already captured locally in gridData
+        // Actually, gridData already reflects current state.
+        gridData.features.forEach((f: any) => {
+          if (f.properties.captured) currentCapturedSet.add(f.properties.id);
+        });
+      } else {
+        currentCapturedSet = new Set(JSON.parse(localStorage.getItem('capturedSquares') || '[]'));
+      }
 
       // Process each track
       for (const feature of geojson.features) {
         if (feature.geometry?.type === 'LineString' || feature.geometry?.type === 'MultiLineString') {
-          // Buffer path by 0.5m (same as generation)
           const bufferedPath = turf.buffer(feature as any, 0.0005, { units: 'kilometers' });
           const pathBbox = turf.bbox(bufferedPath as any);
 
-          // Filter candidates by bbox
           const candidates = gridData.features.filter((cell: any) => {
             const cLat = cell.properties.centerLat;
             const cLon = cell.properties.centerLon;
-            // Simple bbox check with small buffer
             return cLat >= pathBbox[1] - 0.0002 && cLat <= pathBbox[3] + 0.0002 &&
               cLon >= pathBbox[0] - 0.0002 && cLon <= pathBbox[2] + 0.0002;
           });
 
-          // Check intersection
           for (const cell of candidates) {
-            if (cell.properties.captured) continue;
+            if (currentCapturedSet.has(cell.properties.id)) continue;
 
             if (turf.booleanIntersects(cell as any, bufferedPath as any)) {
-              cell.properties.captured = true;
-              capturedSet.add(cell.properties.id);
+              cell.properties.captured = true; // Optimistic update
+              newCapturedIds.push(cell.properties.id);
+              currentCapturedSet.add(cell.properties.id);
               newCapturedCount++;
             }
           }
         }
       }
 
-      // Save to localStorage
-      localStorage.setItem('capturedSquares', JSON.stringify(Array.from(capturedSet)));
+      if (newCapturedCount > 0) {
+        if (user) {
+          // Save to Firestore
+          const userRef = doc(db, "users", user.uid);
+          const userDoc = await getDoc(userRef);
 
-      // Update stats
-      setStats(prev => ({
-        captured: newCapturedCount,
-        totalCaptured: capturedSet.size
-      }));
-
-      // Update map
-      mapRef.current?.updateGridData({ ...gridData });
+          if (userDoc.exists()) {
+            await updateDoc(userRef, {
+              capturedSquares: arrayUnion(...newCapturedIds)
+            });
+          } else {
+            await setDoc(userRef, {
+              capturedSquares: newCapturedIds,
+              email: user.email,
+              createdAt: new Date().toISOString()
+            });
+          }
+        } else {
+          // Save to LocalStorage
+          localStorage.setItem('capturedSquares', JSON.stringify(Array.from(currentCapturedSet)));
+          // Manually update grid for guest (for user, snapshot will handle it)
+          updateGridWithCaptured(currentCapturedSet);
+        }
+      }
 
       alert(`Success! Captured ${newCapturedCount} new squares.`);
 
@@ -145,6 +243,11 @@ export default function Home() {
 
   return (
     <main className="flex h-screen flex-col">
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+
       {/* Top Bar */}
       <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between z-20">
         <h1 className="text-xl font-bold text-gray-900">Street Player</h1>
@@ -194,6 +297,30 @@ export default function Home() {
         )}
 
         <div className="flex items-center gap-4">
+          {/* Auth Button */}
+          {user ? (
+            <div className="flex items-center gap-3">
+              <div className="text-sm text-gray-700 hidden sm:block">
+                {user.email}
+              </div>
+              <button
+                onClick={() => signOut(auth)}
+                className="px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="px-4 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              Log In
+            </button>
+          )}
+
+          <div className="h-6 w-px bg-gray-300 mx-1"></div>
+
           {stats && (
             <div className="text-sm text-gray-600">
               <span className="font-semibold text-green-600">+{stats.captured}</span> new squares
