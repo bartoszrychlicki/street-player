@@ -70,6 +70,17 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [] }
     // Add navigation controls
     map.current.addControl(new maplibregl.NavigationControl(), 'top-right');
 
+    // Add geolocate control
+    map.current.addControl(
+      new maplibregl.GeolocateControl({
+        positionOptions: {
+          enableHighAccuracy: true
+        },
+        trackUserLocation: true
+      }),
+      'top-right'
+    );
+
     // Wait for map to load, then add layers
     map.current.on('load', () => {
       if (!map.current) return;
