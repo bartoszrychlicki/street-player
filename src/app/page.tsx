@@ -142,104 +142,111 @@ export default function Home() {
     if (!file || !gridData) return;
 
     setUploading(true);
+
     try {
       const text = await file.text();
-      const parser = new DOMParser();
-      const gpxDoc = parser.parseFromString(text, "text/xml");
-      const geojson = gpx(gpxDoc);
 
-      let newCapturedCount = 0;
-      const newCapturedIds: string[] = [];
-
-      // Determine current captured set source
-      let currentCapturedSet = new Set<string>();
+      // Determine current captured set
+      let currentCaptured: string[] = [];
       if (user) {
-        // For user, we'll get current state from Firestore via snapshot, 
-        // but for calculation we need to know what's already captured locally in gridData
-        // Actually, gridData already reflects current state.
         gridData.features.forEach((f: any) => {
-          if (f.properties.captured) currentCapturedSet.add(f.properties.id);
+          if (f.properties.captured) currentCaptured.push(f.properties.id);
         });
       } else {
-        currentCapturedSet = new Set(JSON.parse(localStorage.getItem('capturedSquares') || '[]'));
+        currentCaptured = JSON.parse(localStorage.getItem('capturedSquares') || '[]');
       }
 
-      // Process each track
-      for (const feature of geojson.features) {
-        if (feature.geometry?.type === 'LineString' || feature.geometry?.type === 'MultiLineString') {
-          const bufferedPath = turf.buffer(feature as any, 0.0005, { units: 'kilometers' });
-          const pathBbox = turf.bbox(bufferedPath as any);
+      // Create and communicate with Web Worker
+      const worker = new Worker('/gpx-worker.js');
 
-          const candidates = gridData.features.filter((cell: any) => {
-            const cLat = cell.properties.centerLat;
-            const cLon = cell.properties.centerLon;
-            return cLat >= pathBbox[1] - 0.0002 && cLat <= pathBbox[3] + 0.0002 &&
-              cLon >= pathBbox[0] - 0.0002 && cLon <= pathBbox[2] + 0.0002;
-          });
+      worker.postMessage({
+        type: 'process',
+        gpxText: text,
+        gridData: gridData,
+        currentCaptured: currentCaptured
+      });
 
-          for (const cell of candidates) {
-            if (currentCapturedSet.has(cell.properties.id)) continue;
+      worker.onmessage = async (event) => {
+        const { type, newCapturedIds, count, processed, total, message } = event.data;
 
-            if (turf.booleanIntersects(cell as any, bufferedPath as any)) {
-              cell.properties.captured = true; // Optimistic update
-              newCapturedIds.push(cell.properties.id);
-              currentCapturedSet.add(cell.properties.id);
-              newCapturedCount++;
-            }
-          }
-        }
-      }
+        if (type === 'progress') {
+          // Optional: Update UI with progress
+          console.log(`Processing: ${processed}/${total} features`);
+        } else if (type === 'result') {
+          // Processing complete
+          worker.terminate();
 
-      if (newCapturedCount > 0) {
-        if (user) {
-          // Save to Firestore
-          try {
-            const userRef = doc(db, "users", user.uid);
-            const userDoc = await getDoc(userRef);
-
-            if (userDoc.exists()) {
-              await updateDoc(userRef, {
-                capturedSquares: arrayUnion(...newCapturedIds)
-              });
-            } else {
-              await setDoc(userRef, {
-                capturedSquares: newCapturedIds,
-                email: user.email,
-                createdAt: new Date().toISOString()
-              });
-            }
-
-            // Update stats after successful save
-            setStats(prev => ({
-              captured: newCapturedCount,
-              totalCaptured: (prev?.totalCaptured || 0) + newCapturedCount
-            }));
-          } catch (firestoreError: any) {
-            console.error('Firestore error:', firestoreError);
-            alert(`Error saving to cloud: ${firestoreError.message}\n\nYour progress was not saved. Please check your internet connection and Firestore configuration.`);
-            // Revert optimistic updates
-            newCapturedIds.forEach(id => {
+          if (count > 0) {
+            // Update grid with optimistic updates
+            newCapturedIds.forEach((id: string) => {
               const cell = gridData.features.find((f: any) => f.properties.id === id);
-              if (cell) cell.properties.captured = false;
+              if (cell) cell.properties.captured = true;
             });
-            mapRef.current?.updateGridData({ ...gridData });
-            setUploading(false);
-            return;
-          }
-        } else {
-          // Save to LocalStorage
-          localStorage.setItem('capturedSquares', JSON.stringify(Array.from(currentCapturedSet)));
-          // Manually update grid for guest (for user, snapshot will handle it)
-          updateGridWithCaptured(currentCapturedSet);
-        }
-      }
 
-      alert(`Success! Captured ${newCapturedCount} new squares.`);
+            if (user) {
+              // Save to Firestore
+              try {
+                const userRef = doc(db, "users", user.uid);
+                const userDoc = await getDoc(userRef);
+
+                if (userDoc.exists()) {
+                  await updateDoc(userRef, {
+                    capturedSquares: arrayUnion(...newCapturedIds)
+                  });
+                } else {
+                  await setDoc(userRef, {
+                    capturedSquares: newCapturedIds,
+                    email: user.email,
+                    createdAt: new Date().toISOString()
+                  });
+                }
+
+                // Update stats after successful save
+                setStats(prev => ({
+                  captured: count,
+                  totalCaptured: (prev?.totalCaptured || 0) + count
+                }));
+              } catch (firestoreError: any) {
+                console.error('Firestore error:', firestoreError);
+                alert(`Error saving to cloud: ${firestoreError.message}\n\nYour progress was not saved. Please check your internet connection and Firestore configuration.`);
+                // Revert optimistic updates
+                newCapturedIds.forEach((id: string) => {
+                  const cell = gridData.features.find((f: any) => f.properties.id === id);
+                  if (cell) cell.properties.captured = false;
+                });
+                mapRef.current?.updateGridData({ ...gridData });
+                setUploading(false);
+                return;
+              }
+            } else {
+              // Save to LocalStorage
+              const updatedCaptured = [...currentCaptured, ...newCapturedIds];
+              localStorage.setItem('capturedSquares', JSON.stringify(updatedCaptured));
+              // Manually update grid for guest
+              updateGridWithCaptured(new Set(updatedCaptured));
+            }
+          }
+
+          alert(`Success! Captured ${count} new squares.`);
+          setUploading(false);
+        } else if (type === 'error') {
+          worker.terminate();
+          console.error('Worker error:', message);
+          alert(`Error processing GPX file: ${message}`);
+          setUploading(false);
+        }
+      };
+
+      worker.onerror = (error) => {
+        worker.terminate();
+        console.error('Worker error:', error);
+        alert('Error processing GPX file. Please try again.');
+        setUploading(false);
+      };
 
     } catch (error) {
       console.error('Processing error:', error);
       alert('Error processing GPX file');
-    } finally {
       setUploading(false);
     }
   };
