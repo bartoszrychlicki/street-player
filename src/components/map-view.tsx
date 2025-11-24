@@ -1,12 +1,30 @@
 "use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-export default function MapView() {
+export interface MapViewRef {
+  refreshGrid: () => void;
+}
+
+const MapView = forwardRef<MapViewRef>((props, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    refreshGrid: () => {
+      if (map.current && map.current.getSource('grid')) {
+        const source = map.current.getSource('grid') as maplibregl.GeoJSONSource;
+        // Force reload by fetching fresh data
+        fetch(`/oliwa-grid.geojson?t=${Date.now()}`)
+          .then(res => res.json())
+          .then(data => {
+            source.setData(data);
+          });
+      }
+    }
+  }));
 
   useEffect(() => {
     if (map.current) return; // initialize map only once
@@ -79,24 +97,40 @@ export default function MapView() {
         data: '/oliwa-grid.geojson'
       });
 
-      // Add fill layer for grid (semi-transparent red)
+      // Add fill layer for grid
+      // Red for uncaptured, Green for captured
       map.current.addLayer({
         id: 'grid-fill',
         type: 'fill',
         source: 'grid',
         paint: {
-          'fill-color': '#ff0000',
-          'fill-opacity': 0.15
+          'fill-color': [
+            'case',
+            ['boolean', ['get', 'captured'], false],
+            '#00ff00', // Captured: Green
+            '#ff0000'  // Uncaptured: Red
+          ],
+          'fill-opacity': [
+            'case',
+            ['boolean', ['get', 'captured'], false],
+            0.4, // Captured: more visible
+            0.15 // Uncaptured: faint
+          ]
         }
       });
 
-      // Add outline layer for grid (red lines)
+      // Add outline layer for grid
       map.current.addLayer({
         id: 'grid-outline',
         type: 'line',
         source: 'grid',
         paint: {
-          'line-color': '#ff0000',
+          'line-color': [
+            'case',
+            ['boolean', ['get', 'captured'], false],
+            '#00cc00', // Captured: Darker Green
+            '#ff0000'  // Uncaptured: Red
+          ],
           'line-width': 1,
           'line-opacity': 0.6
         }
@@ -113,4 +147,8 @@ export default function MapView() {
   return (
     <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
   );
-}
+});
+
+MapView.displayName = 'MapView';
+
+export default MapView;
