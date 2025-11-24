@@ -2,6 +2,9 @@
 
 import { useRef, useState, useEffect } from "react";
 import MapView, { MapViewRef } from "@/components/map-view";
+import { gpx } from "@tmcw/togeojson";
+import * as turf from "@turf/turf";
+import { DOMParser } from "xmldom";
 
 const ROAD_TYPES = [
   { id: 'footway', label: 'Footway', description: 'Pedestrian paths' },
@@ -25,45 +28,100 @@ export default function Home() {
   );
   const [showFilters, setShowFilters] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [gridData, setGridData] = useState<any>(null);
 
-  // Fetch total grid count on mount
+  // Load grid and merge with localStorage
   useEffect(() => {
     fetch('/oliwa-grid.geojson')
       .then(res => res.json())
       .then(data => {
+        setGridData(data);
         const total = data.features.length;
-        const captured = data.features.filter((f: any) => f.properties.captured).length;
+
+        // Load captured state from localStorage
+        const savedCaptured = JSON.parse(localStorage.getItem('capturedSquares') || '[]');
+        const capturedSet = new Set(savedCaptured);
+
+        // Update grid with saved state
+        let capturedCount = 0;
+        data.features.forEach((f: any) => {
+          if (capturedSet.has(f.properties.id)) {
+            f.properties.captured = true;
+            capturedCount++;
+          }
+        });
+
         setTotalGridCount(total);
-        setStats({ captured: 0, totalCaptured: captured });
+        setStats({ captured: 0, totalCaptured: capturedCount });
+
+        // Initial map update
+        if (mapRef.current) {
+          mapRef.current.updateGridData(data);
+        }
       })
       .catch(err => console.error('Failed to load grid:', err));
   }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
+    if (!file || !gridData) return;
 
     setUploading(true);
     try {
-      const res = await fetch('/api/upload-activity', {
-        method: 'POST',
-        body: formData,
-      });
+      const text = await file.text();
+      const parser = new DOMParser();
+      const gpxDoc = parser.parseFromString(text, "text/xml");
+      const geojson = gpx(gpxDoc);
 
-      if (!res.ok) throw new Error('Upload failed');
+      let newCapturedCount = 0;
+      const capturedSet = new Set(JSON.parse(localStorage.getItem('capturedSquares') || '[]'));
 
-      const data = await res.json();
-      setStats(data);
+      // Process each track
+      for (const feature of geojson.features) {
+        if (feature.geometry?.type === 'LineString' || feature.geometry?.type === 'MultiLineString') {
+          // Buffer path by 0.5m (same as generation)
+          const bufferedPath = turf.buffer(feature as any, 0.0005, { units: 'kilometers' });
+          const pathBbox = turf.bbox(bufferedPath as any);
 
-      mapRef.current?.refreshGrid();
+          // Filter candidates by bbox
+          const candidates = gridData.features.filter((cell: any) => {
+            const cLat = cell.properties.centerLat;
+            const cLon = cell.properties.centerLon;
+            // Simple bbox check with small buffer
+            return cLat >= pathBbox[1] - 0.0002 && cLat <= pathBbox[3] + 0.0002 &&
+              cLon >= pathBbox[0] - 0.0002 && cLon <= pathBbox[2] + 0.0002;
+          });
 
-      alert(`Success! Captured ${data.captured} new squares.`);
+          // Check intersection
+          for (const cell of candidates) {
+            if (cell.properties.captured) continue;
+
+            if (turf.booleanIntersects(cell as any, bufferedPath as any)) {
+              cell.properties.captured = true;
+              capturedSet.add(cell.properties.id);
+              newCapturedCount++;
+            }
+          }
+        }
+      }
+
+      // Save to localStorage
+      localStorage.setItem('capturedSquares', JSON.stringify(Array.from(capturedSet)));
+
+      // Update stats
+      setStats(prev => ({
+        captured: newCapturedCount,
+        totalCaptured: capturedSet.size
+      }));
+
+      // Update map
+      mapRef.current?.updateGridData({ ...gridData });
+
+      alert(`Success! Captured ${newCapturedCount} new squares.`);
+
     } catch (error) {
-      console.error(error);
-      alert('Error uploading file');
+      console.error('Processing error:', error);
+      alert('Error processing GPX file');
     } finally {
       setUploading(false);
     }

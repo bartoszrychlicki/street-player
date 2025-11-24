@@ -6,6 +6,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 export interface MapViewRef {
   refreshGrid: () => void;
+  updateGridData: (data: any) => void;
 }
 
 interface MapViewProps {
@@ -26,6 +27,12 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [] }
           .then(data => {
             source.setData(data);
           });
+      }
+    },
+    updateGridData: (data: any) => {
+      if (map.current && map.current.getSource('grid')) {
+        const source = map.current.getSource('grid') as maplibregl.GeoJSONSource;
+        source.setData(data);
       }
     }
   }));
