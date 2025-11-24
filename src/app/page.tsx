@@ -40,6 +40,13 @@ export default function Home() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // GPS Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedPoints, setRecordedPoints] = useState<{ lat: number; lon: number; timestamp: number; accuracy?: number }[]>([]);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const watchIdRef = useRef<number | null>(null);
+
   // Load grid data
   useEffect(() => {
     fetch('/oliwa-grid.geojson')
@@ -137,6 +144,262 @@ export default function Home() {
       mapRef.current.updateGridData({ ...gridData });
     }
   };
+
+  // GPS Recording Functions
+  const startRecording = () => {
+    if (!navigator.geolocation) {
+      toast.error('GPS niedostępny', {
+        description: 'Twoja przeglądarka nie wspiera geolokalizacji.',
+        duration: 4000,
+      });
+      return;
+    }
+
+    setIsRecording(true);
+    setStartTime(Date.now());
+    setRecordedPoints([]);
+    setRecordingDuration(0);
+
+    toast.success('Nagrywanie rozpoczęte', {
+      description: 'Spacer musi trwać minimum 1 minutę.',
+      duration: 3000,
+    });
+  };
+
+  const stopRecording = async () => {
+    setIsRecording(false);
+
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+
+    // Validation: minimum 1 minute (12 points at 5s interval)
+    if (recordedPoints.length < 12) {
+      toast.error('Spacer zbyt krótki', {
+        description: `Nagrano tylko ${recordedPoints.length} punktów. Minimum to 12 punktów (1 minuta).`,
+        duration: 5000,
+      });
+      setRecordedPoints([]);
+      setStartTime(null);
+      localStorage.removeItem('activeRecording');
+      return;
+    }
+
+    // Convert to GeoJSON LineString
+    const geojson = {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: recordedPoints.map(p => [p.lon, p.lat])
+        },
+        properties: {
+          name: 'Recorded Activity',
+          time: new Date(startTime!).toISOString()
+        }
+      }]
+    };
+
+    // Process like GPX import
+    await processRecordedActivity(geojson);
+
+    // Cleanup
+    setRecordedPoints([]);
+    setStartTime(null);
+    setRecordingDuration(0);
+    localStorage.removeItem('activeRecording');
+  };
+
+  const processRecordedActivity = async (geojson: any) => {
+    if (!gridData) return;
+
+    let newCapturedCount = 0;
+    const newCapturedIds: string[] = [];
+
+    let currentCapturedSet = new Set<string>();
+    if (user) {
+      gridData.features.forEach((f: any) => {
+        if (f.properties.captured) currentCapturedSet.add(f.properties.id);
+      });
+    } else {
+      currentCapturedSet = new Set(JSON.parse(localStorage.getItem('capturedSquares') || '[]'));
+    }
+
+    const BATCH_SIZE = 5;
+    const features = geojson.features.filter(
+      (f: any) => f.geometry?.type === 'LineString' || f.geometry?.type === 'MultiLineString'
+    );
+
+    const processBatch = async (startIndex: number): Promise<void> => {
+      const endIndex = Math.min(startIndex + BATCH_SIZE, features.length);
+
+      for (let i = startIndex; i < endIndex; i++) {
+        const feature = features[i];
+        const bufferedPath = turf.buffer(feature as any, 0.0005, { units: 'kilometers' });
+        const pathBbox = turf.bbox(bufferedPath as any);
+
+        const candidates = gridData.features.filter((cell: any) => {
+          const cLat = cell.properties.centerLat;
+          const cLon = cell.properties.centerLon;
+          return cLat >= pathBbox[1] - 0.0002 && cLat <= pathBbox[3] + 0.0002 &&
+            cLon >= pathBbox[0] - 0.0002 && cLon <= pathBbox[2] + 0.0002;
+        });
+
+        for (const cell of candidates) {
+          if (currentCapturedSet.has(cell.properties.id)) continue;
+
+          if (turf.booleanIntersects(cell as any, bufferedPath as any)) {
+            cell.properties.captured = true;
+            newCapturedIds.push(cell.properties.id);
+            currentCapturedSet.add(cell.properties.id);
+            newCapturedCount++;
+          }
+        }
+      }
+
+      if (endIndex < features.length) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+        await processBatch(endIndex);
+      }
+    };
+
+    await processBatch(0);
+
+    if (newCapturedCount > 0) {
+      if (user) {
+        try {
+          const userRef = doc(db, "users", user.uid);
+          const userDoc = await getDoc(userRef);
+
+          if (userDoc.exists()) {
+            await updateDoc(userRef, {
+              capturedSquares: arrayUnion(...newCapturedIds)
+            });
+          } else {
+            await setDoc(userRef, {
+              capturedSquares: newCapturedIds,
+              email: user.email,
+              createdAt: new Date().toISOString()
+            });
+          }
+
+          setStats(prev => ({
+            captured: newCapturedCount,
+            totalCaptured: (prev?.totalCaptured || 0) + newCapturedCount
+          }));
+        } catch (firestoreError: any) {
+          console.error('Firestore error:', firestoreError);
+          toast.error('Nie udało się zapisać postępu', {
+            description: `${firestoreError.message}. Twój postęp nie został zapisany.`,
+            duration: 5000,
+          });
+          newCapturedIds.forEach(id => {
+            const cell = gridData.features.find((f: any) => f.properties.id === id);
+            if (cell) cell.properties.captured = false;
+          });
+          mapRef.current?.updateGridData({ ...gridData });
+          return;
+        }
+      } else {
+        localStorage.setItem('capturedSquares', JSON.stringify(Array.from(currentCapturedSet)));
+        updateGridWithCaptured(currentCapturedSet);
+      }
+    }
+
+    toast.success('Spacer zakończony!', {
+      description: `Zdobyto ${newCapturedCount} ${newCapturedCount === 1 ? 'nowy kwadrat' : newCapturedCount < 5 ? 'nowe kwadraty' : 'nowych kwadratów'}!`,
+      duration: 4000,
+    });
+  };
+
+  // GPS Tracking Hook
+  useEffect(() => {
+    if (!isRecording) return;
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const point = {
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+          timestamp: Date.now(),
+          accuracy: position.coords.accuracy
+        };
+
+        setRecordedPoints(prev => {
+          const updated = [...prev, point];
+          // Auto-save to localStorage
+          localStorage.setItem('activeRecording', JSON.stringify({
+            points: updated,
+            startTime
+          }));
+          return updated;
+        });
+
+        // Update map with live route
+        if (mapRef.current) {
+          mapRef.current.updateRecordingRoute(recordedPoints.concat(point));
+        }
+      },
+      (error) => {
+        console.error('GPS error:', error);
+        toast.error('Błąd GPS', {
+          description: error.message,
+          duration: 4000,
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, [isRecording, startTime]);
+
+  // Duration Timer
+  useEffect(() => {
+    if (!isRecording || !startTime) return;
+
+    const interval = setInterval(() => {
+      setRecordingDuration(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isRecording, startTime]);
+
+  // Recovery on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('activeRecording');
+    if (saved) {
+      try {
+        const { points, startTime: savedStart } = JSON.parse(saved);
+        if (points && points.length > 0) {
+          const shouldRecover = confirm(
+            `Znaleziono niezakończone nagrywanie z ${new Date(savedStart).toLocaleString()}. Czy chcesz je kontynuować?`
+          );
+
+          if (shouldRecover) {
+            setRecordedPoints(points);
+            setStartTime(savedStart);
+            setIsRecording(true);
+            toast.info('Wznowiono nagrywanie', { duration: 3000 });
+          } else {
+            localStorage.removeItem('activeRecording');
+          }
+        }
+      } catch (e) {
+        console.error('Recovery error:', e);
+        localStorage.removeItem('activeRecording');
+      }
+    }
+  }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -392,16 +655,44 @@ export default function Home() {
             <span className="text-xs text-gray-500">({selectedRoadTypes.length}/{ROAD_TYPES.length})</span>
           </button>
 
+          {/* Recording Button */}
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={uploading}
+            className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 transition-colors ${isRecording
+                ? 'bg-red-600 text-white hover:bg-red-700 animate-pulse'
+                : 'bg-green-600 text-white hover:bg-green-700'
+              }`}
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {isRecording ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              )}
+            </svg>
+            <span className="hidden sm:inline">
+              {isRecording ? (
+                <>
+                  {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                  <span className="text-xs ml-1">({recordedPoints.length})</span>
+                </>
+              ) : (
+                'Rozpocznij spacer'
+              )}
+            </span>
+          </button>
+
           {/* Import Button - Icon only on mobile */}
           <label className="cursor-pointer">
             <input
               type="file"
               accept=".gpx"
               onChange={handleFileUpload}
-              disabled={uploading}
+              disabled={uploading || isRecording}
               className="hidden"
             />
-            <div className="px-2 sm:px-4 py-1.5 sm:py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2">
+            <div className={`px-2 sm:px-4 py-1.5 sm:py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 ${(uploading || isRecording) ? 'opacity-50 cursor-not-allowed' : ''}`}>
               {uploading ? (
                 <>
                   <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

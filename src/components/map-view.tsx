@@ -7,6 +7,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 export interface MapViewRef {
   refreshGrid: () => void;
   updateGridData: (data: any) => void;
+  updateRecordingRoute: (points: { lat: number; lon: number }[]) => void;
 }
 
 interface MapViewProps {
@@ -33,6 +34,20 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [] }
       if (map.current && map.current.getSource('grid')) {
         const source = map.current.getSource('grid') as maplibregl.GeoJSONSource;
         source.setData(data);
+      }
+    },
+    updateRecordingRoute: (points: { lat: number; lon: number }[]) => {
+      if (map.current && map.current.getSource('recording-route')) {
+        const source = map.current.getSource('recording-route') as maplibregl.GeoJSONSource;
+        const geojson = {
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: points.map(p => [p.lon, p.lat])
+          },
+          properties: {}
+        };
+        source.setData(geojson as any);
       }
     }
   }));
@@ -155,6 +170,35 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [] }
           ],
           'line-width': 1,
           'line-opacity': 0.6
+        }
+      });
+
+      // Add source for recording route
+      map.current.addSource('recording-route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: []
+          },
+          properties: {}
+        }
+      });
+
+      // Add layer for recording route
+      map.current.addLayer({
+        id: 'recording-route-line',
+        type: 'line',
+        source: 'recording-route',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': '#ff0000',
+          'line-width': 4,
+          'line-opacity': 0.8
         }
       });
 
