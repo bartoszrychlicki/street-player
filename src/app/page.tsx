@@ -145,104 +145,108 @@ export default function Home() {
 
     try {
       const text = await file.text();
+      const parser = new DOMParser();
+      const gpxDoc = parser.parseFromString(text, "text/xml");
+      const geojson = gpx(gpxDoc);
+
+      let newCapturedCount = 0;
+      const newCapturedIds: string[] = [];
 
       // Determine current captured set
-      let currentCaptured: string[] = [];
+      let currentCapturedSet = new Set<string>();
       if (user) {
         gridData.features.forEach((f: any) => {
-          if (f.properties.captured) currentCaptured.push(f.properties.id);
+          if (f.properties.captured) currentCapturedSet.add(f.properties.id);
         });
       } else {
-        currentCaptured = JSON.parse(localStorage.getItem('capturedSquares') || '[]');
+        currentCapturedSet = new Set(JSON.parse(localStorage.getItem('capturedSquares') || '[]'));
       }
 
-      // Create and communicate with Web Worker
-      const worker = new Worker('/gpx-worker.js');
+      // Process features in batches to keep UI responsive
+      const BATCH_SIZE = 5; // Process 5 features at a time
+      const features = geojson.features.filter(
+        (f: any) => f.geometry?.type === 'LineString' || f.geometry?.type === 'MultiLineString'
+      );
 
-      worker.postMessage({
-        type: 'process',
-        gpxText: text,
-        gridData: gridData,
-        currentCaptured: currentCaptured
-      });
+      const processBatch = async (startIndex: number): Promise<void> => {
+        const endIndex = Math.min(startIndex + BATCH_SIZE, features.length);
 
-      worker.onmessage = async (event) => {
-        const { type, newCapturedIds, count, processed, total, message } = event.data;
+        for (let i = startIndex; i < endIndex; i++) {
+          const feature = features[i];
+          const bufferedPath = turf.buffer(feature as any, 0.0005, { units: 'kilometers' });
+          const pathBbox = turf.bbox(bufferedPath as any);
 
-        if (type === 'progress') {
-          // Optional: Update UI with progress
-          console.log(`Processing: ${processed}/${total} features`);
-        } else if (type === 'result') {
-          // Processing complete
-          worker.terminate();
+          const candidates = gridData.features.filter((cell: any) => {
+            const cLat = cell.properties.centerLat;
+            const cLon = cell.properties.centerLon;
+            return cLat >= pathBbox[1] - 0.0002 && cLat <= pathBbox[3] + 0.0002 &&
+              cLon >= pathBbox[0] - 0.0002 && cLon <= pathBbox[2] + 0.0002;
+          });
 
-          if (count > 0) {
-            // Update grid with optimistic updates
-            newCapturedIds.forEach((id: string) => {
-              const cell = gridData.features.find((f: any) => f.properties.id === id);
-              if (cell) cell.properties.captured = true;
-            });
+          for (const cell of candidates) {
+            if (currentCapturedSet.has(cell.properties.id)) continue;
 
-            if (user) {
-              // Save to Firestore
-              try {
-                const userRef = doc(db, "users", user.uid);
-                const userDoc = await getDoc(userRef);
-
-                if (userDoc.exists()) {
-                  await updateDoc(userRef, {
-                    capturedSquares: arrayUnion(...newCapturedIds)
-                  });
-                } else {
-                  await setDoc(userRef, {
-                    capturedSquares: newCapturedIds,
-                    email: user.email,
-                    createdAt: new Date().toISOString()
-                  });
-                }
-
-                // Update stats after successful save
-                setStats(prev => ({
-                  captured: count,
-                  totalCaptured: (prev?.totalCaptured || 0) + count
-                }));
-              } catch (firestoreError: any) {
-                console.error('Firestore error:', firestoreError);
-                alert(`Error saving to cloud: ${firestoreError.message}\n\nYour progress was not saved. Please check your internet connection and Firestore configuration.`);
-                // Revert optimistic updates
-                newCapturedIds.forEach((id: string) => {
-                  const cell = gridData.features.find((f: any) => f.properties.id === id);
-                  if (cell) cell.properties.captured = false;
-                });
-                mapRef.current?.updateGridData({ ...gridData });
-                setUploading(false);
-                return;
-              }
-            } else {
-              // Save to LocalStorage
-              const updatedCaptured = [...currentCaptured, ...newCapturedIds];
-              localStorage.setItem('capturedSquares', JSON.stringify(updatedCaptured));
-              // Manually update grid for guest
-              updateGridWithCaptured(new Set(updatedCaptured));
+            if (turf.booleanIntersects(cell as any, bufferedPath as any)) {
+              cell.properties.captured = true;
+              newCapturedIds.push(cell.properties.id);
+              currentCapturedSet.add(cell.properties.id);
+              newCapturedCount++;
             }
           }
+        }
 
-          alert(`Success! Captured ${count} new squares.`);
-          setUploading(false);
-        } else if (type === 'error') {
-          worker.terminate();
-          console.error('Worker error:', message);
-          alert(`Error processing GPX file: ${message}`);
-          setUploading(false);
+        // If there are more features, process next batch after a short delay
+        if (endIndex < features.length) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+          await processBatch(endIndex);
         }
       };
 
-      worker.onerror = (error) => {
-        worker.terminate();
-        console.error('Worker error:', error);
-        alert('Error processing GPX file. Please try again.');
-        setUploading(false);
-      };
+      // Start processing
+      await processBatch(0);
+
+      // Save results
+      if (newCapturedCount > 0) {
+        if (user) {
+          try {
+            const userRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userRef);
+
+            if (userDoc.exists()) {
+              await updateDoc(userRef, {
+                capturedSquares: arrayUnion(...newCapturedIds)
+              });
+            } else {
+              await setDoc(userRef, {
+                capturedSquares: newCapturedIds,
+                email: user.email,
+                createdAt: new Date().toISOString()
+              });
+            }
+
+            setStats(prev => ({
+              captured: newCapturedCount,
+              totalCaptured: (prev?.totalCaptured || 0) + newCapturedCount
+            }));
+          } catch (firestoreError: any) {
+            console.error('Firestore error:', firestoreError);
+            alert(`Error saving to cloud: ${firestoreError.message}\n\nYour progress was not saved. Please check your internet connection and Firestore configuration.`);
+            newCapturedIds.forEach(id => {
+              const cell = gridData.features.find((f: any) => f.properties.id === id);
+              if (cell) cell.properties.captured = false;
+            });
+            mapRef.current?.updateGridData({ ...gridData });
+            setUploading(false);
+            return;
+          }
+        } else {
+          localStorage.setItem('capturedSquares', JSON.stringify(Array.from(currentCapturedSet)));
+          updateGridWithCaptured(currentCapturedSet);
+        }
+      }
+
+      alert(`Success! Captured ${newCapturedCount} new squares.`);
+      setUploading(false);
 
     } catch (error) {
       console.error('Processing error:', error);
