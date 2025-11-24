@@ -4,13 +4,15 @@
 // Import libraries from CDN (since we can't use npm imports in workers directly)
 importScripts('https://cdn.jsdelivr.net/npm/@tmcw/togeojson@5.8.1/dist/togeojson.umd.js');
 importScripts('https://cdn.jsdelivr.net/npm/@turf/turf@7.1.0/turf.min.js');
+importScripts('https://cdn.jsdelivr.net/npm/@xmldom/xmldom@0.8.10/lib/dom-parser.js');
 
 self.addEventListener('message', async (e) => {
     const { type, gpxText, gridData, currentCaptured } = e.data;
 
     if (type === 'process') {
         try {
-            // Parse GPX
+            // Parse GPX using xmldom (works in workers)
+            const DOMParser = self.DOMParser || self.xmldom.DOMParser;
             const parser = new DOMParser();
             const gpxDoc = parser.parseFromString(gpxText, "text/xml");
             const geojson = toGeoJSON.gpx(gpxDoc);
