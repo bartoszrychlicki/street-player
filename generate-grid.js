@@ -110,17 +110,15 @@ function generateUniformGridFast(pathsGeoJSON, gridSizeMeters = 20) {
     const gridSquares = new Map(); // Use Map to store unique squares by key "row_col"
 
     // Distance threshold: half diagonal of square + small buffer
+    // We use this only for initial candidate filtering (bbox expansion)
     const diagonalMeters = Math.sqrt(2) * gridSizeMeters;
-    const thresholdKm = (diagonalMeters / 2 + 1) / 1000; // +1m buffer is enough if we check strictly
-    // Note: User wanted coverage. A slightly larger buffer ensures no gaps on turns.
-    // Let's stick to the previous logic roughly: 
-    // If distance(center, path) <= threshold, then include.
-    // Threshold was ~12m for 10m grid.
+    const thresholdKm = (diagonalMeters / 2 + 2) / 1000; // Keep generous for bbox filter
 
-    console.log(`Distance threshold: ${thresholdKm * 1000}m`);
+    console.log(`Using exact intersection logic with 0.5m path buffer`);
     console.log(`Processing ${pathsGeoJSON.features.length} paths...`);
 
     let processedPaths = 0;
+    const totalPaths = pathsGeoJSON.features.length;
 
     // Pre-calculate degree deltas for the threshold to expand bbox
     const latBuffer = thresholdKm / 111;
@@ -128,11 +126,16 @@ function generateUniformGridFast(pathsGeoJSON, gridSizeMeters = 20) {
 
     for (const pathFeature of pathsGeoJSON.features) {
         processedPaths++;
-        if (processedPaths % 500 === 0) process.stdout.write('.');
+        if (processedPaths % 500 === 0) {
+            console.log(`Processed ${processedPaths}/${totalPaths} paths (${Math.round(processedPaths / totalPaths * 100)}%)...`);
+        }
 
-        const pathGeom = pathFeature.geometry;
-        const pathBbox = turf.bbox(pathFeature);
         const pathHighway = pathFeature.properties.highway || 'unknown';
+
+        // Buffer the path by 0.5m to simulate width and ensure continuity
+        // This handles edge cases where path goes exactly on grid line
+        const bufferedPath = turf.buffer(pathFeature, 0.0005, { units: 'kilometers' }); // 0.5m buffer
+        const pathBbox = turf.bbox(bufferedPath);
 
         // Expand bbox by threshold to find candidate grid cells
         const minLat = pathBbox[1] - latBuffer;
@@ -156,11 +159,20 @@ function generateUniformGridFast(pathsGeoJSON, gridSizeMeters = 20) {
                 const centerLon = gridOriginLon + (col + 0.5) * lonStep;
                 const centerPoint = turf.point([centerLon, centerLat]);
 
-                // Check distance to THIS path
-                const nearestPoint = turf.nearestPointOnLine(pathGeom, centerPoint);
-                const distance = turf.distance(centerPoint, nearestPoint, { units: 'kilometers' });
+                // Create square polygon for intersection check
+                const cellLat = gridOriginLat + row * latStep;
+                const cellLon = gridOriginLon + col * lonStep;
 
-                if (distance <= thresholdKm) {
+                const square = turf.polygon([[
+                    [cellLon, cellLat],
+                    [cellLon + lonStep, cellLat],
+                    [cellLon + lonStep, cellLat + latStep],
+                    [cellLon, cellLat + latStep],
+                    [cellLon, cellLat]
+                ]]);
+
+                // Check EXACT intersection
+                if (turf.booleanIntersects(square, bufferedPath)) {
                     // Check if in Oliwa
                     if (turf.booleanPointInPolygon(centerPoint, oliwa)) {
                         if (gridSquares.has(key)) {
@@ -170,18 +182,7 @@ function generateUniformGridFast(pathsGeoJSON, gridSizeMeters = 20) {
                                 existingSquare.properties.roadTypes.push(pathHighway);
                             }
                         } else {
-                            // Create new square
-                            const cellLat = gridOriginLat + row * latStep;
-                            const cellLon = gridOriginLon + col * lonStep;
-
-                            const square = turf.polygon([[
-                                [cellLon, cellLat],
-                                [cellLon + lonStep, cellLat],
-                                [cellLon + lonStep, cellLat + latStep],
-                                [cellLon, cellLat + latStep],
-                                [cellLon, cellLat]
-                            ]]);
-
+                            // Create new square properties
                             square.properties = {
                                 id: `oliwa_${row}_${col}`,
                                 district: 'Oliwa',
