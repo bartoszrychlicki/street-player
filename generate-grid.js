@@ -132,6 +132,7 @@ function generateUniformGridFast(pathsGeoJSON, gridSizeMeters = 20) {
 
         const pathGeom = pathFeature.geometry;
         const pathBbox = turf.bbox(pathFeature);
+        const pathHighway = pathFeature.properties.highway || 'unknown';
 
         // Expand bbox by threshold to find candidate grid cells
         const minLat = pathBbox[1] - latBuffer;
@@ -149,7 +150,6 @@ function generateUniformGridFast(pathsGeoJSON, gridSizeMeters = 20) {
         for (let row = minRow; row <= maxRow; row++) {
             for (let col = minCol; col <= maxCol; col++) {
                 const key = `${row}_${col}`;
-                if (gridSquares.has(key)) continue; // Already added
 
                 // Calculate center
                 const centerLat = gridOriginLat + (row + 0.5) * latStep;
@@ -161,37 +161,40 @@ function generateUniformGridFast(pathsGeoJSON, gridSizeMeters = 20) {
                 const distance = turf.distance(centerPoint, nearestPoint, { units: 'kilometers' });
 
                 if (distance <= thresholdKm) {
-                    // Check if in Oliwa (expensive, maybe do only if match?)
-                    // Optimization: Check Oliwa only if we haven't checked this cell before.
-                    // But we already checked gridSquares.has(key).
-
+                    // Check if in Oliwa
                     if (turf.booleanPointInPolygon(centerPoint, oliwa)) {
-                        const lon = gridOriginLon + row * lonStep;
-                        const lat = gridOriginLat + col * latStep; // Wait, row is lat?
-                        // row * latStep + origin
+                        if (gridSquares.has(key)) {
+                            // Square already exists, add this road type to it
+                            const existingSquare = gridSquares.get(key);
+                            if (!existingSquare.properties.roadTypes.includes(pathHighway)) {
+                                existingSquare.properties.roadTypes.push(pathHighway);
+                            }
+                        } else {
+                            // Create new square
+                            const cellLat = gridOriginLat + row * latStep;
+                            const cellLon = gridOriginLon + col * lonStep;
 
-                        const cellLat = gridOriginLat + row * latStep;
-                        const cellLon = gridOriginLon + col * lonStep;
+                            const square = turf.polygon([[
+                                [cellLon, cellLat],
+                                [cellLon + lonStep, cellLat],
+                                [cellLon + lonStep, cellLat + latStep],
+                                [cellLon, cellLat + latStep],
+                                [cellLon, cellLat]
+                            ]]);
 
-                        const square = turf.polygon([[
-                            [cellLon, cellLat],
-                            [cellLon + lonStep, cellLat],
-                            [cellLon + lonStep, cellLat + latStep],
-                            [cellLon, cellLat + latStep],
-                            [cellLon, cellLat]
-                        ]]);
+                            square.properties = {
+                                id: `oliwa_${row}_${col}`,
+                                district: 'Oliwa',
+                                captured: false,
+                                centerLat: centerLat,
+                                centerLon: centerLon,
+                                gridRow: row,
+                                gridCol: col,
+                                roadTypes: [pathHighway]
+                            };
 
-                        square.properties = {
-                            id: `oliwa_${row}_${col}`,
-                            district: 'Oliwa',
-                            captured: false,
-                            centerLat: centerLat,
-                            centerLon: centerLon,
-                            gridRow: row,
-                            gridCol: col
-                        };
-
-                        gridSquares.set(key, square);
+                            gridSquares.set(key, square);
+                        }
                     }
                 }
             }

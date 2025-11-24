@@ -8,7 +8,11 @@ export interface MapViewRef {
   refreshGrid: () => void;
 }
 
-const MapView = forwardRef<MapViewRef>((props, ref) => {
+interface MapViewProps {
+  selectedRoadTypes?: string[];
+}
+
+const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [] }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
 
@@ -143,6 +147,49 @@ const MapView = forwardRef<MapViewRef>((props, ref) => {
       map.current?.remove();
     };
   }, []);
+
+  // Update filter when selectedRoadTypes changes
+  useEffect(() => {
+    if (!map.current) return;
+
+    // Wait for map to be loaded and layer to exist
+    const applyFilter = () => {
+      if (!map.current?.getLayer('grid-fill')) return;
+
+      // Build filter expression
+      // Show squares that have at least one of the selected road types
+      let filter: any;
+
+      if (selectedRoadTypes.length === 0) {
+        // No types selected - hide all
+        filter = ['==', ['get', 'id'], ''];
+      } else {
+        // Create an 'any' filter that checks if roadTypes array contains any selected type
+        const conditions = selectedRoadTypes.map(type => [
+          'in',
+          type,
+          ['get', 'roadTypes']
+        ]);
+
+        if (conditions.length === 1) {
+          filter = conditions[0];
+        } else {
+          filter = ['any', ...conditions];
+        }
+      }
+
+      map.current.setFilter('grid-fill', filter);
+      map.current.setFilter('grid-outline', filter);
+    };
+
+    // If map is already loaded, apply filter immediately
+    if (map.current.isStyleLoaded()) {
+      applyFilter();
+    } else {
+      // Otherwise wait for load event
+      map.current.once('load', applyFilter);
+    }
+  }, [selectedRoadTypes]);
 
   return (
     <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
