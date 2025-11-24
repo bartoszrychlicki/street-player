@@ -193,19 +193,38 @@ export default function Home() {
       if (newCapturedCount > 0) {
         if (user) {
           // Save to Firestore
-          const userRef = doc(db, "users", user.uid);
-          const userDoc = await getDoc(userRef);
+          try {
+            const userRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userRef);
 
-          if (userDoc.exists()) {
-            await updateDoc(userRef, {
-              capturedSquares: arrayUnion(...newCapturedIds)
+            if (userDoc.exists()) {
+              await updateDoc(userRef, {
+                capturedSquares: arrayUnion(...newCapturedIds)
+              });
+            } else {
+              await setDoc(userRef, {
+                capturedSquares: newCapturedIds,
+                email: user.email,
+                createdAt: new Date().toISOString()
+              });
+            }
+
+            // Update stats after successful save
+            setStats(prev => ({
+              captured: newCapturedCount,
+              totalCaptured: (prev?.totalCaptured || 0) + newCapturedCount
+            }));
+          } catch (firestoreError: any) {
+            console.error('Firestore error:', firestoreError);
+            alert(`Error saving to cloud: ${firestoreError.message}\n\nYour progress was not saved. Please check your internet connection and Firestore configuration.`);
+            // Revert optimistic updates
+            newCapturedIds.forEach(id => {
+              const cell = gridData.features.find((f: any) => f.properties.id === id);
+              if (cell) cell.properties.captured = false;
             });
-          } else {
-            await setDoc(userRef, {
-              capturedSquares: newCapturedIds,
-              email: user.email,
-              createdAt: new Date().toISOString()
-            });
+            mapRef.current?.updateGridData({ ...gridData });
+            setUploading(false);
+            return;
           }
         } else {
           // Save to LocalStorage
