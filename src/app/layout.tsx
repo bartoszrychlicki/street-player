@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Street Player - Explore and Capture Your City",
-  description: "Track your walking and cycling adventures by capturing grid squares on a map. Import GPX files, compete with friends, and explore every street in your city.",
-  keywords: ["street mapping", "GPX tracker", "city explorer", "walking tracker", "cycling tracker", "map game"],
+  title: "Street Player - Eksploruj i Zdobywaj Swoje Miasto",
+  description: "Śledź swoje piesze i rowerowe przygody, zdobywając kwadraty na mapie. Importuj pliki GPX, rywalizuj ze znajomymi i odkrywaj każdą ulicę w swoim mieście.",
+  keywords: ["mapowanie ulic", "tracker GPX", "eksplorator miasta", "tracker spacerów", "tracker rowerowy", "gra mapowa"],
   authors: [{ name: "Street Player" }],
   openGraph: {
-    title: "Street Player - Explore and Capture Your City",
-    description: "Track your walking and cycling adventures by capturing grid squares on a map.",
+    title: "Street Player - Eksploruj i Zdobywaj Swoje Miasto",
+    description: "Śledź swoje piesze i rowerowe przygody, zdobywając kwadraty na mapie.",
     type: "website",
   },
 };

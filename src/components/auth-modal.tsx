@@ -71,7 +71,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 </button>
 
                 <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
-                    {isLogin ? "Welcome Back" : "Create Account"}
+                    {isLogin ? "Witaj ponownie" : "Utwórz konto"}
                 </h2>
 
                 {error && (
@@ -88,12 +88,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all"
-                            placeholder="you@example.com"
+                            placeholder="twoj@email.com"
                             required
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Hasło</label>
                         <input
                             type="password"
                             value={password}
@@ -110,7 +110,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         disabled={loading}
                         className="w-full bg-violet-600 text-white py-2 rounded-lg font-medium hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loading ? "Processing..." : (isLogin ? "Sign In" : "Sign Up")}
+                        {loading ? "Przetwarzanie..." : (isLogin ? "Zaloguj się" : "Zarejestruj się")}
                     </button>
                 </form>
 
@@ -119,7 +119,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         <div className="w-full border-t border-gray-200"></div>
                     </div>
                     <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                        <span className="px-2 bg-white text-gray-500">Lub kontynuuj z</span>
                     </div>
                 </div>
 
@@ -150,12 +150,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 </button>
 
                 <div className="mt-6 text-center text-sm text-gray-600">
-                    {isLogin ? "Don't have an account? " : "Already have an account? "}
+                    {isLogin ? "Nie masz konta? " : "Masz już konto? "}
                     <button
                         onClick={() => setIsLogin(!isLogin)}
                         className="text-violet-600 font-medium hover:underline"
                     >
-                        {isLogin ? "Sign up" : "Log in"}
+                        {isLogin ? "Zarejestruj się" : "Zaloguj się"}
                     </button>
                 </div>
             </div>

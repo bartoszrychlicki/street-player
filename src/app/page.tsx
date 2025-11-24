@@ -12,15 +12,15 @@ import AuthModal from "@/components/auth-modal";
 import { toast } from "sonner";
 
 const ROAD_TYPES = [
-  { id: 'footway', label: 'Footway', description: 'Pedestrian paths' },
-  { id: 'path', label: 'Path', description: 'Unpaved paths' },
-  { id: 'cycleway', label: 'Cycleway', description: 'Bike paths' },
-  { id: 'pedestrian', label: 'Pedestrian', description: 'Pedestrian zones' },
-  { id: 'track', label: 'Track', description: 'Forest/agricultural tracks' },
-  { id: 'steps', label: 'Steps', description: 'Stairs' },
-  { id: 'service', label: 'Service', description: 'Service roads' },
-  { id: 'unclassified', label: 'Unclassified', description: 'Minor roads' },
-  { id: 'residential', label: 'Residential', description: 'Residential streets' },
+  { id: 'footway', label: 'Chodnik', description: 'Ścieżki dla pieszych' },
+  { id: 'path', label: 'Ścieżka', description: 'Nieutwardzone ścieżki' },
+  { id: 'cycleway', label: 'Ścieżka rowerowa', description: 'Drogi rowerowe' },
+  { id: 'pedestrian', label: 'Strefa piesza', description: 'Strefy dla pieszych' },
+  { id: 'track', label: 'Trakt', description: 'Drogi leśne/rolnicze' },
+  { id: 'steps', label: 'Schody', description: 'Schody' },
+  { id: 'service', label: 'Droga serwisowa', description: 'Drogi dojazdowe' },
+  { id: 'unclassified', label: 'Nieklasyfikowana', description: 'Drogi pomniejsze' },
+  { id: 'residential', label: 'Osiedlowa', description: 'Ulice osiedlowe' },
 ];
 
 export default function Home() {
@@ -231,8 +231,8 @@ export default function Home() {
             }));
           } catch (firestoreError: any) {
             console.error('Firestore error:', firestoreError);
-            toast.error('Failed to save progress', {
-              description: `${firestoreError.message}. Your progress was not saved. Please check your internet connection.`,
+            toast.error('Nie udało się zapisać postępu', {
+              description: `${firestoreError.message}. Twój postęp nie został zapisany. Sprawdź połączenie z internetem.`,
               duration: 5000,
             });
             newCapturedIds.forEach(id => {
@@ -249,16 +249,16 @@ export default function Home() {
         }
       }
 
-      toast.success('Import successful!', {
-        description: `Captured ${newCapturedCount} new square${newCapturedCount !== 1 ? 's' : ''}. Keep exploring!`,
+      toast.success('Import zakończony sukcesem!', {
+        description: `Zdobyto ${newCapturedCount} ${newCapturedCount === 1 ? 'nowy kwadrat' : newCapturedCount < 5 ? 'nowe kwadraty' : 'nowych kwadratów'}. Eksploruj dalej!`,
         duration: 4000,
       });
       setUploading(false);
 
     } catch (error) {
       console.error('Processing error:', error);
-      toast.error('Import failed', {
-        description: 'There was an error processing your GPX file. Please try again.',
+      toast.error('Import nie powiódł się', {
+        description: 'Wystąpił błąd podczas przetwarzania pliku GPX. Spróbuj ponownie.',
         duration: 4000,
       });
       setUploading(false);
@@ -317,15 +317,15 @@ export default function Home() {
               <div className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg z-30 whitespace-nowrap">
                 <div className="text-xs space-y-1">
                   <div className="flex justify-between gap-4">
-                    <span className="text-gray-300">Total squares:</span>
+                    <span className="text-gray-300">Wszystkich kwadratów:</span>
                     <span className="font-semibold">{totalGridCount.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <span className="text-green-400">Captured:</span>
+                    <span className="text-green-400">Zdobytych:</span>
                     <span className="font-semibold">{stats?.totalCaptured.toLocaleString() || 0}</span>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <span className="text-red-400">Remaining:</span>
+                    <span className="text-red-400">Pozostało:</span>
                     <span className="font-semibold">{remaining.toLocaleString()}</span>
                   </div>
                 </div>
@@ -347,7 +347,7 @@ export default function Home() {
                 onClick={() => signOut(auth)}
                 className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
               >
-                <span className="hidden sm:inline">Sign Out</span>
+                <span className="hidden sm:inline">Wyloguj</span>
                 <span className="sm:hidden">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -360,7 +360,7 @@ export default function Home() {
               onClick={() => setIsAuthModalOpen(true)}
               className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors"
             >
-              <span className="hidden sm:inline">Log In</span>
+              <span className="hidden sm:inline">Zaloguj</span>
               <span className="sm:hidden">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
@@ -374,9 +374,9 @@ export default function Home() {
           {/* Stats - Hidden on mobile, shown on tablet+ */}
           {stats && (
             <div className="text-xs sm:text-sm text-gray-600 hidden md:block">
-              <span className="font-semibold text-green-600">+{stats.captured}</span> new
+              <span className="font-semibold text-green-600">+{stats.captured}</span> nowych
               <span className="mx-1 sm:mx-2">•</span>
-              <span className="font-semibold">{stats.totalCaptured}</span> total
+              <span className="font-semibold">{stats.totalCaptured}</span> łącznie
             </div>
           )}
 
@@ -388,7 +388,7 @@ export default function Home() {
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
             </svg>
-            <span className="hidden sm:inline">Filters</span>
+            <span className="hidden sm:inline">Filtry</span>
             <span className="text-xs text-gray-500">({selectedRoadTypes.length}/{ROAD_TYPES.length})</span>
           </button>
 
@@ -408,14 +408,14 @@ export default function Home() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span className="hidden sm:inline">Processing...</span>
+                  <span className="hidden sm:inline">Przetwarzanie...</span>
                 </>
               ) : (
                 <>
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
-                  <span className="hidden sm:inline">Import GPX</span>
+                  <span className="hidden sm:inline">Importuj GPX</span>
                 </>
               )}
             </div>
@@ -427,19 +427,19 @@ export default function Home() {
       {showFilters && (
         <div className="bg-gray-50 border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700">Road Types</h2>
+            <h2 className="text-sm font-semibold text-gray-700">Typy dróg</h2>
             <div className="flex gap-2">
               <button
                 onClick={selectAll}
                 className="text-xs px-2 py-1 text-violet-600 hover:bg-violet-50 rounded"
               >
-                Select All
+                Zaznacz wszystkie
               </button>
               <button
                 onClick={deselectAll}
                 className="text-xs px-2 py-1 text-gray-600 hover:bg-gray-100 rounded"
               >
-                Clear
+                Wyczyść
               </button>
             </div>
           </div>
@@ -467,7 +467,7 @@ export default function Home() {
               onClick={() => setShowFilters(false)}
               className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 bg-gray-100 rounded-lg transition-colors"
             >
-              Close
+              Zamknij
             </button>
           </div>
         </div>
