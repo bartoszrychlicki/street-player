@@ -24,6 +24,12 @@ const ROAD_TYPES = [
   { id: 'residential', label: 'Osiedlowa', description: 'Ulice osiedlowe' },
 ];
 
+const DISTRICTS = [
+  { id: 'oliwa', name: 'Oliwa' },
+  { id: 'vii_dwor', name: 'VII Dwór' },
+  { id: 'strzyza', name: 'Strzyża' },
+];
+
 export default function Home() {
   const [uploading, setUploading] = useState(false);
   const [stats, setStats] = useState<{ captured: number; totalCaptured: number } | null>(null);
@@ -31,6 +37,9 @@ export default function Home() {
   const mapRef = useRef<MapViewRef>(null);
   const [selectedRoadTypes, setSelectedRoadTypes] = useState<string[]>(
     ROAD_TYPES.map(rt => rt.id)
+  );
+  const [selectedDistricts, setSelectedDistricts] = useState<string[]>(
+    DISTRICTS.map(d => d.name)
   );
   const [showFilters, setShowFilters] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -66,7 +75,7 @@ export default function Home() {
 
   // Load grid data
   useEffect(() => {
-    fetch('/oliwa-grid.geojson')
+    fetch('/city-grid.geojson')
       .then(res => res.json())
       .then(data => {
         setGridData(data);
@@ -798,7 +807,7 @@ export default function Home() {
 
       {/* Map Container */}
       <div className="flex-1 h-full relative">
-        <MapView ref={mapRef} selectedRoadTypes={selectedRoadTypes} />
+        <MapView ref={mapRef} selectedRoadTypes={selectedRoadTypes} selectedDistricts={selectedDistricts} />
       </div>
     </main>
   );

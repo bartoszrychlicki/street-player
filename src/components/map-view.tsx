@@ -12,9 +12,10 @@ export interface MapViewRef {
 
 interface MapViewProps {
   selectedRoadTypes?: string[];
+  selectedDistricts?: string[];
 }
 
-const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [] }, ref) => {
+const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], selectedDistricts = [] }, ref) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
 
@@ -23,7 +24,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [] }
       if (map.current && map.current.getSource('grid')) {
         const source = map.current.getSource('grid') as maplibregl.GeoJSONSource;
         // Force reload by fetching fresh data
-        fetch(`/oliwa-grid.geojson?t=${Date.now()}`)
+        fetch(`/city-grid.geojson?t=${Date.now()}`)
           .then(res => res.json())
           .then(data => {
             source.setData(data);
@@ -131,7 +132,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [] }
       // Add GeoJSON source for grid squares
       map.current.addSource('grid', {
         type: 'geojson',
-        data: '/oliwa-grid.geojson'
+        data: '/city-grid.geojson'
       });
 
       // Add fill layer for grid
@@ -252,6 +253,55 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [] }
       map.current.once('load', applyFilter);
     }
   }, [selectedRoadTypes]);
+
+  // Update filter when selectedDistricts changes
+  useEffect(() => {
+    if (!map.current) return;
+
+    const applyFilter = () => {
+      if (!map.current?.getLayer('grid-fill')) return;
+
+      // Build combined filter for road types AND districts
+      let roadTypeFilter: any;
+      let districtFilter: any;
+
+      // Road type filter
+      if (selectedRoadTypes.length === 0) {
+        roadTypeFilter = ['==', ['get', 'id'], ''];
+      } else {
+        const roadConditions = selectedRoadTypes.map(type => [
+          'in',
+          type,
+          ['get', 'roadTypes']
+        ]);
+        roadTypeFilter = roadConditions.length === 1 ? roadConditions[0] : ['any', ...roadConditions];
+      }
+
+      // District filter
+      if (selectedDistricts.length === 0) {
+        districtFilter = ['==', ['get', 'id'], ''];
+      } else {
+        const districtConditions = selectedDistricts.map(district => [
+          '==',
+          ['get', 'district'],
+          district
+        ]);
+        districtFilter = districtConditions.length === 1 ? districtConditions[0] : ['any', ...districtConditions];
+      }
+
+      // Combine filters with AND logic
+      const combinedFilter: any = ['all', roadTypeFilter, districtFilter];
+
+      map.current.setFilter('grid-fill', combinedFilter);
+      map.current.setFilter('grid-outline', combinedFilter);
+    };
+
+    if (map.current.isStyleLoaded()) {
+      applyFilter();
+    } else {
+      map.current.once('load', applyFilter);
+    }
+  }, [selectedRoadTypes, selectedDistricts]);
 
   return (
     <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />
