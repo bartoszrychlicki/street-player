@@ -3,32 +3,23 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
-// Get grid size from command line argument, default to 20m
-const gridSizeMeters = parseInt(process.argv[2]) || 20;
+// Get grid size from command line argument, default to 10m
+const gridSizeMeters = parseInt(process.argv[2]) || 10;
 console.log(`Using grid size: ${gridSizeMeters}m x ${gridSizeMeters}m`);
 
-// Load Oliwa district boundary
+// Districts to process - using exact names as they appear in the file (with encoding issues)
+const DISTRICTS = ['Oliwa', 'VII DwÃ³r', 'StrzyÅ¼a'];
+
+// Load districts boundary data
 const districtsData = JSON.parse(
     fs.readFileSync(path.join(__dirname, 'public', 'dzielnice.geojson'), 'utf8')
 );
 
-const oliwa = districtsData.features.find(f =>
-    f.properties.NAZWA === 'Oliwa'
-);
+console.log('✓ Loaded districts data');
 
-if (!oliwa) {
-    console.error('Oliwa district not found!');
-    process.exit(1);
-}
-
-console.log('✓ Found Oliwa district');
-
-// Get bounding box for Oliwa
-const bbox = turf.bbox(oliwa);
-console.log('✓ Bounding box:', bbox);
-
-// Overpass API query to get paths in Oliwa
-const overpassQuery = `
+// Overpass API query to get paths for a given bbox
+function buildOverpassQuery(bbox) {
+    return `
 [out:json][timeout:60];
 (
   way["highway"="footway"](${bbox[1]},${bbox[0]},${bbox[3]},${bbox[2]});
@@ -43,24 +34,25 @@ const overpassQuery = `
 );
 out geom;
 `;
+}
 
-async function fetchPaths() {
-    console.log('Fetching paths from OpenStreetMap...');
+async function fetchPaths(bbox, districtName) {
+    console.log(`Fetching paths for ${districtName} from OpenStreetMap...`);
 
     try {
         const response = await axios.post(
             'https://overpass-api.de/api/interpreter',
-            overpassQuery,
+            buildOverpassQuery(bbox),
             {
                 headers: { 'Content-Type': 'text/plain' }
             }
         );
 
-        console.log(`✓ Fetched ${response.data.elements.length} path elements from OSM`);
+        console.log(`✓ Fetched ${response.data.elements.length} path elements for ${districtName}`);
         return response.data.elements;
     } catch (error) {
-        console.error('Error fetching from Overpass API:', error.message);
-        process.exit(1);
+        console.error(`Error fetching from Overpass API for ${districtName}:`, error.message);
+        throw error;
     }
 }
 
@@ -91,11 +83,12 @@ function osmToGeoJSON(elements) {
     };
 }
 
-function generateUniformGridFast(pathsGeoJSON, gridSizeMeters = 20) {
-    console.log(`Generating optimized ${gridSizeMeters}x${gridSizeMeters}m grid for Oliwa...`);
+function generateGridForDistrict(districtFeature, pathsGeoJSON, gridSizeMeters) {
+    const districtName = districtFeature.properties.NAZWA;
+    console.log(`\nGenerating ${gridSizeMeters}x${gridSizeMeters}m grid for ${districtName}...`);
 
-    // Get bounding box of Oliwa district
-    const districtBbox = turf.bbox(oliwa);
+    // Get bounding box of district
+    const districtBbox = turf.bbox(districtFeature);
 
     // Calculate grid cell size in degrees
     const latStep = gridSizeMeters / 111000; // degrees
@@ -110,9 +103,8 @@ function generateUniformGridFast(pathsGeoJSON, gridSizeMeters = 20) {
     const gridSquares = new Map(); // Use Map to store unique squares by key "row_col"
 
     // Distance threshold: half diagonal of square + small buffer
-    // We use this only for initial candidate filtering (bbox expansion)
     const diagonalMeters = Math.sqrt(2) * gridSizeMeters;
-    const thresholdKm = (diagonalMeters / 2 + 2) / 1000; // Keep generous for bbox filter
+    const thresholdKm = (diagonalMeters / 2 + 2) / 1000;
 
     console.log(`Using exact intersection logic with 0.5m path buffer`);
     console.log(`Processing ${pathsGeoJSON.features.length} paths...`);
@@ -122,19 +114,18 @@ function generateUniformGridFast(pathsGeoJSON, gridSizeMeters = 20) {
 
     // Pre-calculate degree deltas for the threshold to expand bbox
     const latBuffer = thresholdKm / 111;
-    const lonBuffer = thresholdKm / 64; // approx
+    const lonBuffer = thresholdKm / 64;
 
     for (const pathFeature of pathsGeoJSON.features) {
         processedPaths++;
         if (processedPaths % 500 === 0) {
-            console.log(`Processed ${processedPaths}/${totalPaths} paths (${Math.round(processedPaths / totalPaths * 100)}%)...`);
+            console.log(`  Processed ${processedPaths}/${totalPaths} paths (${Math.round(processedPaths / totalPaths * 100)}%)...`);
         }
 
         const pathHighway = pathFeature.properties.highway || 'unknown';
 
-        // Buffer the path by 0.5m to simulate width and ensure continuity
-        // This handles edge cases where path goes exactly on grid line
-        const bufferedPath = turf.buffer(pathFeature, 0.0005, { units: 'kilometers' }); // 0.5m buffer
+        // Buffer the path by 0.5m
+        const bufferedPath = turf.buffer(pathFeature, 0.0005, { units: 'kilometers' });
         const pathBbox = turf.bbox(bufferedPath);
 
         // Expand bbox by threshold to find candidate grid cells
@@ -173,8 +164,8 @@ function generateUniformGridFast(pathsGeoJSON, gridSizeMeters = 20) {
 
                 // Check EXACT intersection
                 if (turf.booleanIntersects(square, bufferedPath)) {
-                    // Check if in Oliwa
-                    if (turf.booleanPointInPolygon(centerPoint, oliwa)) {
+                    // Check if in district
+                    if (turf.booleanPointInPolygon(centerPoint, districtFeature)) {
                         if (gridSquares.has(key)) {
                             // Square already exists, add this road type to it
                             const existingSquare = gridSquares.get(key);
@@ -183,9 +174,22 @@ function generateUniformGridFast(pathsGeoJSON, gridSizeMeters = 20) {
                             }
                         } else {
                             // Create new square properties
+                            // Use a safe district ID (lowercase, no spaces/special chars)
+                            const districtId = districtName.toLowerCase()
+                                .replace(/\s+/g, '_')
+                                .replace(/ó/g, 'o')
+                                .replace(/ą/g, 'a')
+                                .replace(/ć/g, 'c')
+                                .replace(/ę/g, 'e')
+                                .replace(/ł/g, 'l')
+                                .replace(/ń/g, 'n')
+                                .replace(/ś/g, 's')
+                                .replace(/ź/g, 'z')
+                                .replace(/ż/g, 'z');
+
                             square.properties = {
-                                id: `oliwa_${row}_${col}`,
-                                district: 'Oliwa',
+                                id: `${districtId}_${row}_${col}`,
+                                district: districtName,
                                 captured: false,
                                 centerLat: centerLat,
                                 centerLon: centerLon,
@@ -202,38 +206,96 @@ function generateUniformGridFast(pathsGeoJSON, gridSizeMeters = 20) {
         }
     }
 
-    console.log('\n');
-    console.log(`✓ Generated ${gridSquares.size} grid cells covering paths`);
+    console.log(`✓ Generated ${gridSquares.size} grid cells for ${districtName}`);
 
-    return {
-        type: 'FeatureCollection',
-        features: Array.from(gridSquares.values())
-    };
+    return Array.from(gridSquares.values());
 }
 
 async function main() {
     try {
-        // Fetch paths from OSM
-        const osmElements = await fetchPaths();
+        const allGridSquares = [];
 
-        // Convert to GeoJSON
-        const pathsGeoJSON = osmToGeoJSON(osmElements);
+        for (const districtName of DISTRICTS) {
+            console.log(`\n${'='.repeat(60)}`);
+            console.log(`Processing district: ${districtName}`);
+            console.log('='.repeat(60));
 
-        // Save paths for reference
-        const pathsOutputPath = path.join(__dirname, 'public', 'oliwa-paths.geojson');
-        fs.writeFileSync(pathsOutputPath, JSON.stringify(pathsGeoJSON, null, 2));
-        console.log(`✓ Saved paths to ${pathsOutputPath}`);
+            // Find district in data
+            const district = districtsData.features.find(f =>
+                f.properties.NAZWA === districtName
+            );
 
-        // Generate fast uniform grid
-        const gridGeoJSON = generateUniformGridFast(pathsGeoJSON, gridSizeMeters);
+            if (!district) {
+                console.error(`❌ District "${districtName}" not found in dzielnice.geojson`);
+                continue;
+            }
 
-        // Save grid
-        const gridOutputPath = path.join(__dirname, 'public', 'oliwa-grid.geojson');
-        fs.writeFileSync(gridOutputPath, JSON.stringify(gridGeoJSON, null, 2));
-        console.log(`✓ Saved grid to ${gridOutputPath}`);
+            console.log(`✓ Found ${districtName} district`);
+
+            // Get bounding box
+            const bbox = turf.bbox(district);
+            console.log('✓ Bounding box:', bbox);
+
+            // Fetch paths from OSM
+            const osmElements = await fetchPaths(bbox, districtName);
+
+            // Convert to GeoJSON
+            const pathsGeoJSON = osmToGeoJSON(osmElements);
+
+            // Save paths for reference
+            const districtId = districtName.toLowerCase()
+                .replace(/\s+/g, '_')
+                .replace(/ó/g, 'o')
+                .replace(/ą/g, 'a')
+                .replace(/ć/g, 'c')
+                .replace(/ę/g, 'e')
+                .replace(/ł/g, 'l')
+                .replace(/ń/g, 'n')
+                .replace(/ś/g, 's')
+                .replace(/ź/g, 'z')
+                .replace(/ż/g, 'z');
+
+            const pathsOutputPath = path.join(__dirname, 'public', `${districtId}-paths.geojson`);
+            fs.writeFileSync(pathsOutputPath, JSON.stringify(pathsGeoJSON, null, 2));
+            console.log(`✓ Saved paths to ${pathsOutputPath}`);
+
+            // Generate grid
+            const gridSquares = generateGridForDistrict(district, pathsGeoJSON, gridSizeMeters);
+
+            // Add to combined collection
+            allGridSquares.push(...gridSquares);
+
+            // Add delay to avoid rate limiting
+            if (DISTRICTS.indexOf(districtName) < DISTRICTS.length - 1) {
+                console.log('\nWaiting 3 seconds before next district...');
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+        }
+
+        // Save combined grid
+        const combinedGrid = {
+            type: 'FeatureCollection',
+            features: allGridSquares
+        };
+
+        const gridOutputPath = path.join(__dirname, 'public', 'city-grid.geojson');
+        fs.writeFileSync(gridOutputPath, JSON.stringify(combinedGrid, null, 2));
+        console.log(`\n✓ Saved combined grid to ${gridOutputPath}`);
 
         console.log('\n✅ Grid generation complete!');
-        console.log(`   Total squares on paths: ${gridGeoJSON.features.length}`);
+        console.log(`   Total squares across all districts: ${allGridSquares.length}`);
+
+        // Print breakdown by district
+        const breakdown = {};
+        allGridSquares.forEach(sq => {
+            const dist = sq.properties.district;
+            breakdown[dist] = (breakdown[dist] || 0) + 1;
+        });
+
+        console.log('\n📊 Breakdown by district:');
+        Object.entries(breakdown).forEach(([dist, count]) => {
+            console.log(`   ${dist}: ${count} squares`);
+        });
 
     } catch (error) {
         console.error('Error:', error);
