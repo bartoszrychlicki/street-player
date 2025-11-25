@@ -397,10 +397,7 @@ export default function Home() {
           return updated;
         });
 
-        // Update map with live route
-        if (mapRef.current) {
-          mapRef.current.updateRecordingRoute(recordedPoints.concat(point));
-        }
+
       },
       (error) => {
         console.error('GPS error:', error);
@@ -422,6 +419,13 @@ export default function Home() {
       }
     };
   }, [isRecording, startTime]);
+
+  // Update map route when points change
+  useEffect(() => {
+    if (mapRef.current && isRecording && recordedPoints.length > 0) {
+      mapRef.current.updateRecordingRoute(recordedPoints);
+    }
+  }, [recordedPoints, isRecording]);
 
   // Duration Timer
   useEffect(() => {
