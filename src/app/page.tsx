@@ -128,6 +128,12 @@ export default function Home() {
               const data = doc.data();
               const capturedSquares = new Set(data.capturedSquares || []);
               updateGridWithCaptured(capturedSquares);
+
+              // Load saved filters if they exist
+              if (data.filters) {
+                if (data.filters.roadTypes) setSelectedRoadTypes(data.filters.roadTypes);
+                if (data.filters.districts) setSelectedDistricts(data.filters.districts);
+              }
             } else {
               // New user without doc
               updateGridWithCaptured(new Set());
@@ -144,11 +150,38 @@ export default function Home() {
         // Guest - Load from LocalStorage
         const localCaptured = JSON.parse(localStorage.getItem('capturedSquares') || '[]');
         updateGridWithCaptured(new Set(localCaptured));
+
+        // Load local filters
+        const localFilters = JSON.parse(localStorage.getItem('filters') || 'null');
+        if (localFilters) {
+          if (localFilters.roadTypes) setSelectedRoadTypes(localFilters.roadTypes);
+          if (localFilters.districts) setSelectedDistricts(localFilters.districts);
+        }
       }
     });
 
     return () => unsubscribe();
   }, [gridData]); // Re-run when gridData loads
+
+  // Save filters on change
+  useEffect(() => {
+    const filters = {
+      roadTypes: selectedRoadTypes,
+      districts: selectedDistricts
+    };
+
+    if (user) {
+      // Save to Firestore with debounce to avoid too many writes
+      const timeoutId = setTimeout(() => {
+        const userRef = doc(db, "users", user.uid);
+        updateDoc(userRef, { filters }).catch(err => console.error("Error saving filters:", err));
+      }, 1000);
+      return () => clearTimeout(timeoutId);
+    } else {
+      // Save to LocalStorage
+      localStorage.setItem('filters', JSON.stringify(filters));
+    }
+  }, [selectedRoadTypes, selectedDistricts, user]);
 
   const updateGridWithCaptured = (capturedSet: Set<any>) => {
     if (!gridData) return;
@@ -565,6 +598,17 @@ export default function Home() {
   const selectAll = () => setSelectedRoadTypes(ROAD_TYPES.map(rt => rt.id));
   const deselectAll = () => setSelectedRoadTypes([]);
 
+  const toggleDistrict = (districtName: string) => {
+    setSelectedDistricts(prev =>
+      prev.includes(districtName)
+        ? prev.filter(name => name !== districtName)
+        : [...prev, districtName]
+    );
+  };
+
+  const selectAllDistricts = () => setSelectedDistricts(DISTRICTS.map(d => d.name));
+  const deselectAllDistricts = () => setSelectedDistricts([]);
+
   const progressPercentage = totalGridCount > 0 && stats
     ? (stats.totalCaptured / totalGridCount) * 100
     : 0;
@@ -775,7 +819,7 @@ export default function Home() {
               </button>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3 mb-6">
             {ROAD_TYPES.map(type => (
               <label
                 key={type.id}
@@ -794,7 +838,42 @@ export default function Home() {
               </label>
             ))}
           </div>
-          <div className="flex justify-end mt-3">
+
+          <div className="flex items-center justify-between mb-3 border-t border-gray-200 pt-4">
+            <h2 className="text-sm font-semibold text-gray-700">Dzielnice</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={selectAllDistricts}
+                className="text-xs px-2 py-1 text-violet-600 hover:bg-violet-50 rounded"
+              >
+                Zaznacz wszystkie
+              </button>
+              <button
+                onClick={deselectAllDistricts}
+                className="text-xs px-2 py-1 text-gray-600 hover:bg-gray-100 rounded"
+              >
+                Wyczyść
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {DISTRICTS.map(district => (
+              <label
+                key={district.id}
+                className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded transition-colors"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedDistricts.includes(district.name)}
+                  onChange={() => toggleDistrict(district.name)}
+                  className="h-4 w-4 text-violet-600 rounded border-gray-300 focus:ring-violet-500"
+                />
+                <span className="text-sm font-medium text-gray-900">{district.name}</span>
+              </label>
+            ))}
+          </div>
+
+          <div className="flex justify-end mt-4">
             <button
               onClick={() => setShowFilters(false)}
               className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 bg-gray-100 rounded-lg transition-colors"
