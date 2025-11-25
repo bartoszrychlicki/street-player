@@ -12,7 +12,7 @@ export default function WelcomePanel({ onRegister }: WelcomePanelProps) {
                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-400"></div>
 
                 <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 mb-2">
-                    Odkryj swoje miasto <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-fuchsia-600">na nowo</span>
+                    Odkryj Gdańsk <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-fuchsia-600">na nowo</span>
                 </h1>
                 <p className="text-lg text-gray-600 font-medium leading-relaxed">
                     Zamień zwykły spacer w wciągającą grę miejską.
@@ -33,7 +33,7 @@ export default function WelcomePanel({ onRegister }: WelcomePanelProps) {
                         <div>
                             <h3 className="font-bold text-gray-900 text-lg">Eksploruj zakamarki</h3>
                             <p className="text-gray-600 text-sm mt-1">
-                                Idea jest prosta: Twoja dzielnica jest podzielona na kwadraty. Twoim celem jest odwiedzenie ich wszystkich – nawet tych ukrytych uliczek, których nie znasz.
+                                Wszystkie ścieżki, zakamarki, ulice i miejsca, do których można dojść, są zmapowane na kwadraty. Twoim celem jest ich zdobycie poprzez fizyczne odwiedzenie każdego z nich.
                             </p>
                         </div>
                     </div>
@@ -47,7 +47,7 @@ export default function WelcomePanel({ onRegister }: WelcomePanelProps) {
                         <div>
                             <h3 className="font-bold text-gray-900 text-lg">Grywalizacja</h3>
                             <p className="text-gray-600 text-sm mt-1">
-                                Śledź swoje postępy, zdobywaj kolejne procenty dzielnicy i rywalizuj z samym sobą. Zobacz, jak mapa zmienia kolor na zielony!
+                                Śledź swoje postępy, zdobywaj kolejne procenty dzielnicy. Rywalizuj ze sobą, jak i z innymi odkrywcami miasta!
                             </p>
                         </div>
                     </div>

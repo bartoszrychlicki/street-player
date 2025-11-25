@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
@@ -12,14 +12,25 @@ import { auth } from "@/lib/firebase";
 interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
+    initialMode?: 'login' | 'register';
 }
 
-export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-    const [isLogin, setIsLogin] = useState(true);
+export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: AuthModalProps) {
+    const [isLogin, setIsLogin] = useState(initialMode === 'login');
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+
+    // Sync state with prop when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            setIsLogin(initialMode === 'login');
+            setError("");
+            setEmail("");
+            setPassword("");
+        }
+    }, [isOpen, initialMode]);
 
     if (!isOpen) return null;
 
@@ -71,7 +82,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 </button>
 
                 <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
-                    {isLogin ? "Witaj ponownie" : "Utwórz konto"}
+                    {isLogin ? "Witaj ponownie" : "Zarejestruj się - to 100% za darmo"}
                 </h2>
 
                 {error && (
