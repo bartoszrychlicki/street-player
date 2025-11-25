@@ -197,9 +197,9 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
           'line-cap': 'round'
         },
         paint: {
-          'line-color': '#ff0000',
-          'line-width': 4,
-          'line-opacity': 0.8
+          'line-color': '#3b82f6', // Blue-500
+          'line-width': 3,
+          'line-opacity': 0.7
         }
       });
 
