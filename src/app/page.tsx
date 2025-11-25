@@ -233,10 +233,10 @@ export default function Home() {
       watchIdRef.current = null;
     }
 
-    // Validation: minimum 1 minute (12 points at 5s interval)
+    // Validation: minimum 1 minute (approx 30 points at 2s interval, but let's keep 12 as safe lower bound)
     if (recordedPoints.length < 12) {
       toast.error('Spacer zbyt krótki', {
-        description: `Nagrano tylko ${recordedPoints.length} punktów. Minimum to 12 punktów (1 minuta).`,
+        description: `Nagrano tylko ${recordedPoints.length} punktów. Spacer musi trwać minimum 1 minutę.`,
         duration: 5000,
       });
       setRecordedPoints([]);
@@ -296,7 +296,8 @@ export default function Home() {
 
       for (let i = startIndex; i < endIndex; i++) {
         const feature = features[i];
-        const bufferedPath = turf.buffer(feature as any, 0.0005, { units: 'kilometers' });
+        // Buffer 3 meters to account for GPS inaccuracy
+        const bufferedPath = turf.buffer(feature as any, 0.003, { units: 'kilometers' });
         const pathBbox = turf.bbox(bufferedPath as any);
 
         const candidates = gridData.features.filter((cell: any) => {
@@ -496,7 +497,8 @@ export default function Home() {
 
         for (let i = startIndex; i < endIndex; i++) {
           const feature = features[i];
-          const bufferedPath = turf.buffer(feature as any, 0.0005, { units: 'kilometers' });
+          // Buffer 3 meters to account for GPS inaccuracy
+          const bufferedPath = turf.buffer(feature as any, 0.003, { units: 'kilometers' });
           const pathBbox = turf.bbox(bufferedPath as any);
 
           const candidates = gridData.features.filter((cell: any) => {
