@@ -10,6 +10,13 @@ console.log(`Using grid size: ${gridSizeMeters}m x ${gridSizeMeters}m`);
 // Districts to process - using exact names as they appear in the file (with encoding issues)
 const DISTRICTS = ['Oliwa', 'VII DwÃ³r', 'StrzyÅ¼a'];
 
+// Mapping from broken encoding to proper Polish names
+const DISTRICT_NAME_FIX = {
+    'Oliwa': 'Oliwa',
+    'VII DwÃ³r': 'VII Dwór',
+    'StrzyÅ¼a': 'Strzyża'
+};
+
 // Load districts boundary data
 const districtsData = JSON.parse(
     fs.readFileSync(path.join(__dirname, 'public', 'dzielnice.geojson'), 'utf8')
@@ -84,7 +91,8 @@ function osmToGeoJSON(elements) {
 }
 
 function generateGridForDistrict(districtFeature, pathsGeoJSON, gridSizeMeters) {
-    const districtName = districtFeature.properties.NAZWA;
+    const districtNameRaw = districtFeature.properties.NAZWA;
+    const districtName = DISTRICT_NAME_FIX[districtNameRaw] || districtNameRaw;
     console.log(`\nGenerating ${gridSizeMeters}x${gridSizeMeters}m grid for ${districtName}...`);
 
     // Get bounding box of district
