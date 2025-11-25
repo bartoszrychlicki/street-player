@@ -13,6 +13,9 @@ import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import WelcomePanel from "@/components/welcome-panel";
 import HelpModal from "@/components/help-modal";
+import UsernameModal from "@/components/username-modal";
+import SettingsModal from "@/components/settings-modal";
+import { generateUsername } from "@/lib/username-generator";
 
 const ROAD_TYPES = [
   { id: 'footway', label: 'Chodnik', description: 'Ścieżki dla pieszych' },
@@ -52,6 +55,10 @@ export default function Home() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [isUsernameModalOpen, setIsUsernameModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [username, setUsername] = useState<string>("");
   const [isSyncing, setIsSyncing] = useState(false);
 
   // GPS Recording State
@@ -127,11 +134,19 @@ export default function Home() {
           }
 
           // Subscribe to real-time updates
-          const unsubscribeSnapshot = onSnapshot(userRef, (doc) => {
-            if (doc.exists()) {
-              const data = doc.data();
+          const unsubscribeSnapshot = onSnapshot(userRef, async (docSnap) => {
+            if (docSnap.exists()) {
+              const data = docSnap.data();
               const capturedSquares = new Set(data.capturedSquares || []);
               updateGridWithCaptured(capturedSquares);
+
+              // Load username
+              if (data.username) {
+                setUsername(data.username);
+              } else {
+                // New user without username - show modal
+                setIsUsernameModalOpen(true);
+              }
 
               // Load saved filters if they exist
               if (data.filters) {
@@ -139,8 +154,16 @@ export default function Home() {
                 if (data.filters.districts) setSelectedDistricts(data.filters.districts);
               }
             } else {
-              // New user without doc
-              updateGridWithCaptured(new Set());
+              // New user without doc - create with generated username
+              const newUsername = generateUsername();
+              await setDoc(userRef, {
+                capturedSquares: [],
+                email: currentUser.email,
+                username: newUsername,
+                createdAt: new Date().toISOString()
+              });
+              setUsername(newUsername);
+              setIsUsernameModalOpen(true);
             }
             setIsSyncing(false);
           });
@@ -619,6 +642,20 @@ export default function Home() {
   const selectAllDistricts = () => setSelectedDistricts(DISTRICTS.map(d => d.name));
   const deselectAllDistricts = () => setSelectedDistricts([]);
 
+  const handleSaveUsername = async (newUsername: string) => {
+    if (!user) return;
+
+    const userRef = doc(db, "users", user.uid);
+    await updateDoc(userRef, {
+      username: newUsername
+    });
+    setUsername(newUsername);
+    toast.success('Pseudonim zapisany', {
+      description: `Twój nowy pseudonim to: ${newUsername}`,
+      duration: 3000,
+    });
+  };
+
   const progressPercentage = totalGridCount > 0 && stats
     ? (stats.totalCaptured / totalGridCount) * 100
     : 0;
@@ -634,6 +671,23 @@ export default function Home() {
       <HelpModal
         isOpen={isHelpModalOpen}
         onClose={() => setIsHelpModalOpen(false)}
+      />
+      <UsernameModal
+        isOpen={isUsernameModalOpen}
+        onClose={() => setIsUsernameModalOpen(false)}
+        onSave={handleSaveUsername}
+        currentUsername={username}
+        isFirstTime={!username}
+      />
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        user={user}
+        username={username}
+        onEditUsername={() => {
+          setIsSettingsModalOpen(false);
+          setIsUsernameModalOpen(true);
+        }}
       />
 
       {/* Top Bar */}
@@ -782,23 +836,65 @@ export default function Home() {
 
           <div className="h-4 sm:h-6 w-px bg-gray-300 hidden sm:block"></div>
 
-          {/* Auth Button */}
+          {/* Auth Button / User Menu */}
           {user ? (
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="text-xs sm:text-sm text-gray-700 hidden lg:block">
-                {user.email}
-              </div>
+            <div className="relative">
               <button
-                onClick={() => signOut(auth)}
-                className="px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                onClick={() => setShowUserDropdown(!showUserDropdown)}
+                className="flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <span className="hidden sm:inline">Wyloguj</span>
-                <span className="sm:hidden">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                </span>
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                  {username.charAt(0).toUpperCase()}
+                </div>
+                <div className="hidden lg:block text-left">
+                  <div className="text-xs sm:text-sm font-medium text-gray-900">{username}</div>
+                  <div className="text-xs text-gray-500">{user.email}</div>
+                </div>
+                <svg className="w-4 h-4 text-gray-500 hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
+
+              {/* Dropdown Menu */}
+              {showUserDropdown && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowUserDropdown(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-20">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900">{username}</p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        setIsSettingsModalOpen(true);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Ustawienia
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        signOut(auth);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      Wyloguj się
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <button
