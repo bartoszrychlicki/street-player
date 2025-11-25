@@ -10,6 +10,7 @@ import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, onSnapshot } from "firebase/firestore";
 import AuthModal from "@/components/auth-modal";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const ROAD_TYPES = [
   { id: 'footway', label: 'Chodnik', description: 'Ścieżki dla pieszych' },
@@ -46,6 +47,22 @@ export default function Home() {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const watchIdRef = useRef<number | null>(null);
+  const [locationPermission, setLocationPermission] = useState<PermissionState | 'unknown'>('unknown');
+
+  // Check location permission on mount
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationPermission('denied');
+      return;
+    }
+
+    navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+      setLocationPermission(result.state);
+      result.onchange = () => {
+        setLocationPermission(result.state);
+      };
+    });
+  }, []);
 
   // Load grid data
   useEffect(() => {
@@ -656,32 +673,47 @@ export default function Home() {
           </button>
 
           {/* Recording Button */}
-          <button
-            onClick={isRecording ? stopRecording : startRecording}
-            disabled={uploading}
-            className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 transition-colors ${isRecording
-                ? 'bg-red-600 text-white hover:bg-red-700 animate-pulse'
-                : 'bg-green-600 text-white hover:bg-green-700'
-              }`}
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {isRecording ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={0}> {/* Wrapper for disabled button tooltip */}
+                  <button
+                    onClick={isRecording ? stopRecording : startRecording}
+                    disabled={uploading || (!isRecording && locationPermission === 'denied')}
+                    className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 transition-colors ${isRecording
+                      ? 'bg-red-600 text-white hover:bg-red-700 animate-pulse'
+                      : (locationPermission === 'denied'
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-green-600 text-white hover:bg-green-700')
+                      }`}
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {isRecording ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      )}
+                    </svg>
+                    <span className="hidden sm:inline">
+                      {isRecording ? (
+                        <>
+                          {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                          <span className="text-xs ml-1">({recordedPoints.length})</span>
+                        </>
+                      ) : (
+                        'Rozpocznij spacer'
+                      )}
+                    </span>
+                  </button>
+                </span>
+              </TooltipTrigger>
+              {!isRecording && locationPermission === 'denied' && (
+                <TooltipContent>
+                  <p>Włącz usługi lokalizacji w przeglądarce, aby rozpocząć spacer.</p>
+                </TooltipContent>
               )}
-            </svg>
-            <span className="hidden sm:inline">
-              {isRecording ? (
-                <>
-                  {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                  <span className="text-xs ml-1">({recordedPoints.length})</span>
-                </>
-              ) : (
-                'Rozpocznij spacer'
-              )}
-            </span>
-          </button>
+            </Tooltip>
+          </TooltipProvider>
 
           {/* Import Button - Icon only on mobile */}
           <label className="cursor-pointer">
