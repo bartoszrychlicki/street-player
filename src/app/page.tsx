@@ -12,6 +12,7 @@ import AuthModal from "@/components/auth-modal";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import WelcomePanel from "@/components/welcome-panel";
+import HelpModal from "@/components/help-modal";
 
 const ROAD_TYPES = [
   { id: 'footway', label: 'Chodnik', description: 'Ścieżki dla pieszych' },
@@ -50,6 +51,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
   // GPS Recording State
@@ -629,6 +631,10 @@ export default function Home() {
         onClose={() => setIsAuthModalOpen(false)}
         initialMode={authMode}
       />
+      <HelpModal
+        isOpen={isHelpModalOpen}
+        onClose={() => setIsHelpModalOpen(false)}
+      />
 
       {/* Top Bar */}
       <div className="bg-white border-b border-gray-200 px-3 sm:px-6 py-2 sm:py-3 flex items-center justify-between z-20">
@@ -922,6 +928,20 @@ export default function Home() {
               <div className="text-xs sm:text-sm text-gray-500 font-medium">
                 {recordedPoints.length} punktów GPS
               </div>
+
+              {/* Warning */}
+              <div className="w-full bg-amber-50 border border-amber-200 rounded-lg p-2 sm:p-3 mt-1">
+                <p className="text-xs text-amber-800 text-center leading-relaxed">
+                  ⚠️ Nie blokuj telefonu i nie zamykaj przeglądarki podczas nagrywania.
+                </p>
+                <button
+                  onClick={() => setIsHelpModalOpen(true)}
+                  className="text-xs text-amber-700 hover:text-amber-900 underline mt-1 w-full text-center font-medium"
+                >
+                  Alternatywa: Import GPX ze Stravy →
+                </button>
+              </div>
+
               <button
                 onClick={stopRecording}
                 className="w-full py-3 sm:py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 text-sm sm:text-base mt-2"
