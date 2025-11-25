@@ -768,8 +768,8 @@ export default function Home() {
             </Tooltip>
           </TooltipProvider>
 
-          {/* Import Button - Icon only on mobile */}
-          <label className="cursor-pointer">
+          {/* Import Button - Hidden on mobile */}
+          <label className="cursor-pointer hidden sm:block">
             <input
               type="file"
               accept=".gpx"
@@ -887,6 +887,33 @@ export default function Home() {
       {/* Map Container */}
       <div className="flex-1 h-full relative">
         <MapView ref={mapRef} selectedRoadTypes={selectedRoadTypes} selectedDistricts={selectedDistricts} />
+
+        {/* Recording Overlay */}
+        {isRecording && (
+          <div className="absolute inset-0 pointer-events-none z-10 flex flex-col justify-end pb-6 sm:pb-10 items-center bg-white/5 backdrop-blur-[1px]">
+            <div className="pointer-events-auto bg-white/95 backdrop-blur-md p-4 sm:p-6 rounded-2xl shadow-2xl border-2 border-red-100 flex flex-col items-center gap-2 sm:gap-4 w-[90%] max-w-sm mx-auto animate-in slide-in-from-bottom-10 fade-in duration-300">
+              <div className="flex items-center gap-2 text-red-600 font-bold animate-pulse text-sm sm:text-base">
+                <div className="w-2 h-2 sm:w-3 sm:h-3 bg-red-600 rounded-full"></div>
+                NAGRYWANIE SPACERU
+              </div>
+              <div className="text-3xl sm:text-4xl font-mono font-bold text-gray-900 tracking-wider">
+                {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+              </div>
+              <div className="text-xs sm:text-sm text-gray-500 font-medium">
+                {recordedPoints.length} punktów GPS
+              </div>
+              <button
+                onClick={stopRecording}
+                className="w-full py-3 sm:py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 text-sm sm:text-base mt-2"
+              >
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+                ZAKOŃCZ SPACER
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
