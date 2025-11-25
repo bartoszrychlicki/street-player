@@ -11,6 +11,7 @@ import { doc, getDoc, setDoc, updateDoc, arrayUnion, onSnapshot } from "firebase
 import AuthModal from "@/components/auth-modal";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import WelcomePanel from "@/components/welcome-panel";
 
 const ROAD_TYPES = [
   { id: 'footway', label: 'Chodnik', description: 'Ścieżki dla pieszych' },
@@ -892,6 +893,9 @@ export default function Home() {
 
       {/* Map Container */}
       <div className="flex-1 h-full relative">
+        {!user && (
+          <WelcomePanel onRegister={() => setIsAuthModalOpen(true)} />
+        )}
         <MapView ref={mapRef} selectedRoadTypes={selectedRoadTypes} selectedDistricts={selectedDistricts} />
 
         {/* Recording Overlay */}
