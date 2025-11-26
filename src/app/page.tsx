@@ -662,24 +662,43 @@ export default function Home() {
   const remaining = totalGridCount - (stats?.totalCaptured || 0);
 
   const syncStrava = async () => {
-    if (!user || !gridData) return;
+    if (!user || !gridData) {
+      console.log('Sync skipped: user or gridData not ready');
+      return;
+    }
 
+    console.log('Starting Strava sync...');
     try {
       const token = await user.getIdToken();
+      console.log('Got Firebase token, calling /api/strava/sync...');
+
       const res = await fetch('/api/strava/sync', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
 
+      console.log('Sync response status:', res.status);
+
       if (res.ok) {
         const data = await res.json();
+        console.log('Sync data:', data);
+
         if (data.success && data.newActivities?.features?.length > 0) {
+          console.log(`Processing ${data.newActivities.features.length} new activities...`);
           await processRecordedActivity(data.newActivities);
           toast.success(`Zsynchronizowano ${data.newActivities.features.length} spacerów ze Strava!`);
+        } else {
+          console.log('No new activities to sync');
+          toast.info('Brak nowych spacerów do zsynchronizowania');
         }
+      } else {
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Sync failed:', res.status, errorData);
+        toast.error(`Błąd synchronizacji: ${errorData.error || 'Nieznany błąd'}`);
       }
     } catch (e) {
       console.error('Strava sync error:', e);
+      toast.error('Błąd podczas synchronizacji ze Strava');
     }
   };
 
