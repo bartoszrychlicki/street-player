@@ -656,10 +656,24 @@ export default function Home() {
     });
   };
 
-  const progressPercentage = totalGridCount > 0 && stats
-    ? (stats.totalCaptured / totalGridCount) * 100
+  // Calculate visible grid count based on selected districts
+  const visibleGridCount = gridData
+    ? gridData.features.filter((f: any) =>
+      selectedDistricts.length === 0 || selectedDistricts.includes(f.properties.district)
+    ).length
     : 0;
-  const remaining = totalGridCount - (stats?.totalCaptured || 0);
+
+  const visibleCapturedCount = gridData && stats
+    ? gridData.features.filter((f: any) =>
+      f.properties.captured &&
+      (selectedDistricts.length === 0 || selectedDistricts.includes(f.properties.district))
+    ).length
+    : 0;
+
+  const progressPercentage = visibleGridCount > 0
+    ? (visibleCapturedCount / visibleGridCount) * 100
+    : 0;
+  const remaining = visibleGridCount - visibleCapturedCount;
 
   const syncStrava = async () => {
     if (!user || !gridData) {
@@ -772,12 +786,12 @@ export default function Home() {
               <div className="absolute top-full mt-2 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg z-30 whitespace-nowrap">
                 <div className="text-xs space-y-1">
                   <div className="flex justify-between gap-4">
-                    <span className="text-gray-300">Wszystkich kwadratów:</span>
-                    <span className="font-semibold">{totalGridCount.toLocaleString()}</span>
+                    <span className="text-gray-300">Widocznych kwadratów:</span>
+                    <span className="font-semibold">{visibleGridCount.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between gap-4">
                     <span className="text-green-400">Zdobytych:</span>
-                    <span className="font-semibold">{stats?.totalCaptured.toLocaleString() || 0}</span>
+                    <span className="font-semibold">{visibleCapturedCount.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between gap-4">
                     <span className="text-red-400">Pozostało:</span>
