@@ -64,9 +64,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Strava not connected or token expired' }, { status: 400 });
         }
 
-        // Fetch activities (last 30 days by default or since last sync)
-        // For simplicity, let's just fetch last 30 activities
-        const activitiesResponse = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=30', {
+        // Fetch activities (last 5 to keep it fast)
+        const activitiesResponse = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=5', {
             headers: { Authorization: `Bearer ${accessToken}` },
         });
 
