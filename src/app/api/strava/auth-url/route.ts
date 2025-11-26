@@ -1,8 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     const clientId = process.env.STRAVA_CLIENT_ID;
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/strava-callback`;
+
+    // Get the origin from the request headers
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'http://localhost:3000';
+    const redirectUri = `${origin}/strava-callback`;
 
     if (!clientId) {
         return NextResponse.json({ error: 'Strava Client ID not configured' }, { status: 500 });
