@@ -768,16 +768,15 @@ export default function Home() {
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}
           >
-            <div className="h-6 bg-gray-200 rounded-full overflow-hidden w-full">
+            <div className="h-6 bg-gray-200 rounded-full overflow-hidden w-full relative">
               <div
-                className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all duration-500 ease-out flex items-center justify-end pr-2"
+                className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all duration-500 ease-out"
                 style={{ width: `${progressPercentage}%` }}
-              >
-                {progressPercentage > 10 && (
-                  <span className="text-xs font-semibold text-white">
-                    {progressPercentage.toFixed(1)}%
-                  </span>
-                )}
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xs font-semibold text-gray-700">
+                  {progressPercentage.toFixed(1)}%
+                </span>
               </div>
             </div>
 
