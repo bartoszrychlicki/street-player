@@ -661,6 +661,39 @@ export default function Home() {
     : 0;
   const remaining = totalGridCount - (stats?.totalCaptured || 0);
 
+  const syncStrava = async () => {
+    if (!user || !gridData) return;
+
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/strava/sync', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.newActivities?.features?.length > 0) {
+          await processRecordedActivity(data.newActivities);
+          toast.success(`Zsynchronizowano ${data.newActivities.features.length} spacerów ze Strava!`);
+        }
+      }
+    } catch (e) {
+      console.error('Strava sync error:', e);
+    }
+  };
+
+  // Auto-sync Strava when user and grid are ready
+  useEffect(() => {
+    if (user && gridData && !isSyncing) {
+      // Small delay to ensure everything is settled
+      const timer = setTimeout(() => {
+        syncStrava();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, gridData]); // Run once when user/grid becomes available
+
   return (
     <main className="flex h-screen flex-col">
       <AuthModal
@@ -688,6 +721,7 @@ export default function Home() {
           setIsSettingsModalOpen(false);
           setIsUsernameModalOpen(true);
         }}
+        onSyncStrava={syncStrava}
       />
 
       {/* Top Bar */}

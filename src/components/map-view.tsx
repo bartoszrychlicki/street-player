@@ -79,8 +79,8 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
           }
         ]
       },
-      center: [18.5383, 54.4013], // Oliwa district center
-      zoom: 13
+      center: [18.5543, 54.4065], // Leśna, Gdańsk Oliwa (zoom out + 150m w prawo)
+      zoom: 16
     });
 
     // Add navigation controls
