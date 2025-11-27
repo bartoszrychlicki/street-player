@@ -187,6 +187,7 @@ function generateGridForDistrict(districtFeature, pathsGeoJSON, gridSizeMeters) 
                             // Use a safe district ID (lowercase, no spaces/special chars)
                             const districtId = districtName.toLowerCase()
                                 .replace(/\s+/g, '_')
+                                .replace(/-/g, '_') // Replace hyphens with underscores
                                 .replace(/ó/g, 'o')
                                 .replace(/ą/g, 'a')
                                 .replace(/ć/g, 'c')
@@ -242,19 +243,23 @@ async function main() {
 
             console.log(`✓ Found ${districtName} district`);
 
+            // Get the fixed district name first
+            const districtNameFixed = DISTRICT_NAME_FIX[districtName] || districtName;
+
             // Get bounding box
             const bbox = turf.bbox(district);
             console.log('✓ Bounding box:', bbox);
 
             // Fetch paths from OSM
-            const osmElements = await fetchPaths(bbox, districtName);
+            const osmElements = await fetchPaths(bbox, districtNameFixed);
 
             // Convert to GeoJSON
             const pathsGeoJSON = osmToGeoJSON(osmElements);
 
-            // Save paths for reference
-            const districtId = districtName.toLowerCase()
+            // Calculate clean district ID from the FIXED name
+            const districtId = districtNameFixed.toLowerCase()
                 .replace(/\s+/g, '_')
+                .replace(/-/g, '_') // Replace hyphens with underscores
                 .replace(/ó/g, 'o')
                 .replace(/ą/g, 'a')
                 .replace(/ć/g, 'c')
@@ -266,13 +271,22 @@ async function main() {
                 .replace(/ż/g, 'z');
 
             const pathsOutputPath = path.join(__dirname, 'public', `${districtId}-paths.geojson`);
-            fs.writeFileSync(pathsOutputPath, JSON.stringify(pathsGeoJSON, null, 2));
-            console.log(`✓ Saved paths to ${pathsOutputPath}`);
+            // fs.writeFileSync(pathsOutputPath, JSON.stringify(pathsGeoJSON, null, 2));
+            // console.log(`✓ Saved paths to ${pathsOutputPath}`);
 
             // Generate grid
             const gridSquares = generateGridForDistrict(district, pathsGeoJSON, gridSizeMeters);
 
-            // Add to combined collection
+            // Save individual district grid
+            const districtGrid = {
+                type: 'FeatureCollection',
+                features: gridSquares
+            };
+            const districtGridPath = path.join(__dirname, 'public', `grid-${districtId}.geojson`);
+            fs.writeFileSync(districtGridPath, JSON.stringify(districtGrid, null, 2));
+            console.log(`✓ Saved grid for ${districtNameFixed} to ${districtGridPath}`);
+
+            // Add to combined collection (optional, but good for stats)
             allGridSquares.push(...gridSquares);
 
             // Add delay to avoid rate limiting
@@ -282,15 +296,14 @@ async function main() {
             }
         }
 
-        // Save combined grid
-        const combinedGrid = {
-            type: 'FeatureCollection',
-            features: allGridSquares
-        };
-
-        const gridOutputPath = path.join(__dirname, 'public', 'city-grid.geojson');
-        fs.writeFileSync(gridOutputPath, JSON.stringify(combinedGrid, null, 2));
-        console.log(`\n✓ Saved combined grid to ${gridOutputPath}`);
+        // We can skip saving the massive combined grid now, or save it as backup
+        // const combinedGrid = {
+        //     type: 'FeatureCollection',
+        //     features: allGridSquares
+        // };
+        // const gridOutputPath = path.join(__dirname, 'public', 'city-grid.geojson');
+        // fs.writeFileSync(gridOutputPath, JSON.stringify(combinedGrid, null, 2));
+        // console.log(`\n✓ Saved combined grid to ${gridOutputPath}`);
 
         console.log('\n✅ Grid generation complete!');
         console.log(`   Total squares across all districts: ${allGridSquares.length}`);

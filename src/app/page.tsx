@@ -46,7 +46,7 @@ export default function Home() {
     ROAD_TYPES.map(rt => rt.id)
   );
   const [selectedDistricts, setSelectedDistricts] = useState<string[]>(
-    DISTRICTS.map(d => d.name)
+    ['Oliwa'] // Default only Oliwa
   );
   const [showFilters, setShowFilters] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -86,17 +86,64 @@ export default function Home() {
     });
   }, []);
 
-  // Load grid data
+  // Load grid data dynamically based on selected districts
   useEffect(() => {
-    fetch('/city-grid.geojson')
-      .then(res => res.json())
-      .then(data => {
-        setGridData(data);
-        setTotalGridCount(data.features.length);
-        // Initial load will happen in auth effect
-      })
-      .catch(err => console.error('Failed to load grid:', err));
-  }, []);
+    const loadGrids = async () => {
+      if (selectedDistricts.length === 0) {
+        setGridData({ type: 'FeatureCollection', features: [] });
+        setTotalGridCount(0);
+        return;
+      }
+
+      const allFeatures: any[] = [];
+
+      try {
+        const promises = selectedDistricts.map(async (districtName) => {
+          const districtId = DISTRICTS.find(d => d.name === districtName)?.id;
+          if (!districtId) return;
+
+          try {
+            const res = await fetch(`/grid-${districtId}.geojson`);
+            if (!res.ok) throw new Error(`Failed to load ${districtId}`);
+            const data = await res.json();
+            return data.features;
+          } catch (e) {
+            console.error(`Error loading grid for ${districtName}:`, e);
+            return [];
+          }
+        });
+
+        const results = await Promise.all(promises);
+        results.forEach(features => {
+          if (features) allFeatures.push(...features);
+        });
+
+        const combinedData = {
+          type: 'FeatureCollection',
+          features: allFeatures
+        };
+
+        setGridData(combinedData);
+        setTotalGridCount(allFeatures.length);
+
+        // Re-apply captured status if user is logged in or local storage exists
+        if (user) {
+          // Trigger re-sync logic via auth effect or separate function
+          // For now, let the auth effect handle it when gridData updates
+        } else {
+          const localCaptured = JSON.parse(localStorage.getItem('capturedSquares') || '[]');
+          // We need to apply this immediately to the new gridData
+          // But since state update is async, we might need a better way.
+          // Actually, the existing auth/sync effect depends on [gridData], so it should trigger automatically.
+        }
+
+      } catch (err) {
+        console.error('Failed to load grids:', err);
+      }
+    };
+
+    loadGrids();
+  }, [selectedDistricts]); // Re-run when selected districts change
 
   // Handle Auth & Data Sync
   useEffect(() => {
