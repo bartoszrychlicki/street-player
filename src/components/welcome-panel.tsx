@@ -73,7 +73,7 @@ export default function WelcomePanel({ onRegister }: WelcomePanelProps) {
                         Aktualnie wspierane dzielnice
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                        {['Oliwa', 'VII Dwór', 'Strzyża'].map((district) => (
+                        {['Oliwa', 'VII Dwór', 'Strzyża', 'Piecki-Migowo', 'Wrzeszcz Górny'].map((district) => (
                             <span key={district} className="px-3 py-1 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 shadow-sm">
                                 📍 {district}
                             </span>

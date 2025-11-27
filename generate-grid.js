@@ -8,13 +8,15 @@ const gridSizeMeters = parseInt(process.argv[2]) || 10;
 console.log(`Using grid size: ${gridSizeMeters}m x ${gridSizeMeters}m`);
 
 // Districts to process - using exact names as they appear in the file (with encoding issues)
-const DISTRICTS = ['Oliwa', 'VII DwÃ³r', 'StrzyÅ¼a'];
+const DISTRICTS = ['Oliwa', 'VII DwÃ³r', 'StrzyÅ¼a', 'Pieckiâ€“Migowo', 'Wrzeszcz GÃ³rny'];
 
 // Mapping from broken encoding to proper Polish names
 const DISTRICT_NAME_FIX = {
     'Oliwa': 'Oliwa',
     'VII DwÃ³r': 'VII Dwór',
-    'StrzyÅ¼a': 'Strzyża'
+    'StrzyÅ¼a': 'Strzyża',
+    'Pieckiâ€“Migowo': 'Piecki-Migowo',
+    'Wrzeszcz GÃ³rny': 'Wrzeszcz Górny'
 };
 
 // Load districts boundary data

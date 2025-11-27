@@ -33,6 +33,8 @@ const DISTRICTS = [
   { id: 'oliwa', name: 'Oliwa' },
   { id: 'vii_dwor', name: 'VII Dwór' },
   { id: 'strzyza', name: 'Strzyża' },
+  { id: 'piecki_migowo', name: 'Piecki-Migowo' },
+  { id: 'wrzeszcz_gorny', name: 'Wrzeszcz Górny' },
 ];
 
 export default function Home() {
