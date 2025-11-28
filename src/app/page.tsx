@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import MapView, { MapViewRef } from "@/components/map-view";
 import { gpx } from "@tmcw/togeojson";
 import * as turf from "@turf/turf";
+import Flatbush from 'flatbush';
 import { DOMParser } from "xmldom";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
@@ -50,7 +51,11 @@ export default function Home() {
   );
   const [showFilters, setShowFilters] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
-  const [gridData, setGridData] = useState<any>(null);
+
+  // Refs for data storage (performance optimization)
+  const gridIndexRef = useRef<Flatbush | null>(null);
+  const gridFeaturesRef = useRef<any[]>([]);
+  const capturedSetRef = useRef<Set<string>>(new Set());
 
   // Auth State
   const [user, setUser] = useState<User | null>(null);
@@ -90,8 +95,12 @@ export default function Home() {
   useEffect(() => {
     const loadGrids = async () => {
       if (selectedDistricts.length === 0) {
-        setGridData({ type: 'FeatureCollection', features: [] });
+        gridFeaturesRef.current = [];
+        gridIndexRef.current = null;
         setTotalGridCount(0);
+        if (mapRef.current) {
+          mapRef.current.updateGridData({ type: 'FeatureCollection', features: [] });
+        }
         return;
       }
 
@@ -118,23 +127,43 @@ export default function Home() {
           if (features) allFeatures.push(...features);
         });
 
+        // Store features in ref
+        gridFeaturesRef.current = allFeatures;
+        setTotalGridCount(allFeatures.length);
+
+        // Build Spatial Index (Flatbush)
+        // Initialize with number of items
+        const index = new Flatbush(allFeatures.length);
+
+        allFeatures.forEach(f => {
+          // Calculate bbox from geometry (Polygon ring 0)
+          // Coordinates are [ [ [lon, lat], ... ] ]
+          const coords = f.geometry.coordinates[0];
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+          for (const p of coords) {
+            if (p[0] < minX) minX = p[0];
+            if (p[1] < minY) minY = p[1];
+            if (p[0] > maxX) maxX = p[0];
+            if (p[1] > maxY) maxY = p[1];
+          }
+
+          index.add(minX, minY, maxX, maxY);
+        });
+
+        index.finish();
+        gridIndexRef.current = index;
+
+        // Update Map
         const combinedData = {
           type: 'FeatureCollection',
           features: allFeatures
         };
 
-        setGridData(combinedData);
-        setTotalGridCount(allFeatures.length);
-
-        // Re-apply captured status if user is logged in or local storage exists
-        if (user) {
-          // Trigger re-sync logic via auth effect or separate function
-          // For now, let the auth effect handle it when gridData updates
-        } else {
-          const localCaptured = JSON.parse(localStorage.getItem('capturedSquares') || '[]');
-          // We need to apply this immediately to the new gridData
-          // But since state update is async, we might need a better way.
-          // Actually, the existing auth/sync effect depends on [gridData], so it should trigger automatically.
+        if (mapRef.current) {
+          mapRef.current.updateGridData(combinedData);
+          // Re-apply captured state
+          mapRef.current.updateCapturedState(Array.from(capturedSetRef.current));
         }
 
       } catch (err) {
@@ -149,8 +178,6 @@ export default function Home() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-
-      if (!gridData) return;
 
       if (currentUser) {
         // User is logged in - Sync with Firestore
@@ -186,8 +213,10 @@ export default function Home() {
           const unsubscribeSnapshot = onSnapshot(userRef, async (docSnap) => {
             if (docSnap.exists()) {
               const data = docSnap.data();
-              const capturedSquares = new Set(data.capturedSquares || []);
-              updateGridWithCaptured(capturedSquares);
+              const capturedSquares = new Set<string>(data.capturedSquares || []);
+
+              capturedSetRef.current = capturedSquares;
+              updateMapCapturedState();
 
               // Load username
               if (data.username) {
@@ -225,7 +254,8 @@ export default function Home() {
       } else {
         // Guest - Load from LocalStorage
         const localCaptured = JSON.parse(localStorage.getItem('capturedSquares') || '[]');
-        updateGridWithCaptured(new Set(localCaptured));
+        capturedSetRef.current = new Set(localCaptured);
+        updateMapCapturedState();
 
         // Load local filters
         const localFilters = JSON.parse(localStorage.getItem('filters') || 'null');
@@ -237,7 +267,7 @@ export default function Home() {
     });
 
     return () => unsubscribe();
-  }, [gridData]); // Re-run when gridData loads
+  }, []); // Run once on mount (no dependency on gridData anymore)
 
   // Save filters on change
   useEffect(() => {
@@ -259,24 +289,12 @@ export default function Home() {
     }
   }, [selectedRoadTypes, selectedDistricts, user]);
 
-  const updateGridWithCaptured = (capturedSet: Set<any>) => {
-    if (!gridData) return;
-
-    let capturedCount = 0;
-    // Create a deep copy to avoid mutating state directly if needed, 
-    // but here we modify properties for MapView
-    gridData.features.forEach((f: any) => {
-      if (capturedSet.has(f.properties.id)) {
-        f.properties.captured = true;
-        capturedCount++;
-      } else {
-        f.properties.captured = false;
-      }
-    });
-
+  const updateMapCapturedState = () => {
+    const capturedCount = capturedSetRef.current.size;
     setStats({ captured: 0, totalCaptured: capturedCount });
+
     if (mapRef.current) {
-      mapRef.current.updateGridData({ ...gridData });
+      mapRef.current.updateCapturedState(Array.from(capturedSetRef.current));
     }
   };
 
@@ -338,7 +356,13 @@ export default function Home() {
     };
 
     // Process like GPX import
-    await processRecordedActivity(geojson);
+    const capturedCount = await processRecordedActivity(geojson);
+
+    // Show success toast
+    toast.success('Spacer zakończony!', {
+      description: `Zdobyto ${capturedCount} ${capturedCount === 1 ? 'nowy kwadrat' : capturedCount < 5 ? 'nowe kwadraty' : 'nowych kwadratów'}!`,
+      duration: 4000,
+    });
 
     // Cleanup
     setRecordedPoints([]);
@@ -347,20 +371,13 @@ export default function Home() {
     localStorage.removeItem('activeRecording');
   };
 
-  const processRecordedActivity = async (geojson: any) => {
-    if (!gridData) return;
+  const processRecordedActivity = async (geojson: any): Promise<number> => {
+    if (!gridFeaturesRef.current.length || !gridIndexRef.current) return 0;
 
     let newCapturedCount = 0;
     const newCapturedIds: string[] = [];
 
-    let currentCapturedSet = new Set<string>();
-    if (user) {
-      gridData.features.forEach((f: any) => {
-        if (f.properties.captured) currentCapturedSet.add(f.properties.id);
-      });
-    } else {
-      currentCapturedSet = new Set(JSON.parse(localStorage.getItem('capturedSquares') || '[]'));
-    }
+    const currentCapturedSet = capturedSetRef.current;
 
     const BATCH_SIZE = 5;
     const features = geojson.features.filter(
@@ -376,20 +393,19 @@ export default function Home() {
         const bufferedPath = turf.buffer(feature as any, 0.003, { units: 'kilometers' });
         const pathBbox = turf.bbox(bufferedPath as any);
 
-        const candidates = gridData.features.filter((cell: any) => {
-          const cLat = cell.properties.centerLat;
-          const cLon = cell.properties.centerLon;
-          return cLat >= pathBbox[1] - 0.0002 && cLat <= pathBbox[3] + 0.0002 &&
-            cLon >= pathBbox[0] - 0.0002 && cLon <= pathBbox[2] + 0.0002;
-        });
+        // Use Flatbush to find candidates efficiently
+        const candidateIndices = gridIndexRef.current!.search(
+          pathBbox[0], pathBbox[1], pathBbox[2], pathBbox[3]
+        );
 
-        for (const cell of candidates) {
-          if (currentCapturedSet.has(cell.properties.id)) continue;
+        for (const idx of candidateIndices) {
+          const cell = gridFeaturesRef.current[idx];
+          if (currentCapturedSet.has(cell.id)) continue;
 
           if (turf.booleanIntersects(cell as any, bufferedPath as any)) {
-            cell.properties.captured = true;
-            newCapturedIds.push(cell.properties.id);
-            currentCapturedSet.add(cell.properties.id);
+            // cell.properties.captured = true; // No longer needed
+            newCapturedIds.push(cell.id);
+            currentCapturedSet.add(cell.id);
             newCapturedCount++;
           }
         }
@@ -425,29 +441,32 @@ export default function Home() {
             captured: newCapturedCount,
             totalCaptured: (prev?.totalCaptured || 0) + newCapturedCount
           }));
+
+          // Update map visual state
+          if (mapRef.current) {
+            mapRef.current.updateCapturedState(Array.from(currentCapturedSet));
+          }
+
         } catch (firestoreError: any) {
           console.error('Firestore error:', firestoreError);
           toast.error('Nie udało się zapisać postępu', {
             description: `${firestoreError.message}. Twój postęp nie został zapisany.`,
             duration: 5000,
           });
-          newCapturedIds.forEach(id => {
-            const cell = gridData.features.find((f: any) => f.properties.id === id);
-            if (cell) cell.properties.captured = false;
-          });
-          mapRef.current?.updateGridData({ ...gridData });
-          return;
+          // Revert local optimistic update
+          newCapturedIds.forEach(id => currentCapturedSet.delete(id));
+          if (mapRef.current) {
+            mapRef.current.updateCapturedState(Array.from(currentCapturedSet));
+          }
+          return 0;
         }
       } else {
         localStorage.setItem('capturedSquares', JSON.stringify(Array.from(currentCapturedSet)));
-        updateGridWithCaptured(currentCapturedSet);
+        updateMapCapturedState();
       }
     }
 
-    toast.success('Spacer zakończony!', {
-      description: `Zdobyto ${newCapturedCount} ${newCapturedCount === 1 ? 'nowy kwadrat' : newCapturedCount < 5 ? 'nowe kwadraty' : 'nowych kwadratów'}!`,
-      duration: 4000,
-    });
+    return newCapturedCount;
   };
 
   // GPS Tracking Hook
@@ -543,7 +562,7 @@ export default function Home() {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !gridData) return;
+    if (!file || !gridFeaturesRef.current.length) return;
 
     setUploading(true);
 
@@ -557,14 +576,7 @@ export default function Home() {
       const newCapturedIds: string[] = [];
 
       // Determine current captured set
-      let currentCapturedSet = new Set<string>();
-      if (user) {
-        gridData.features.forEach((f: any) => {
-          if (f.properties.captured) currentCapturedSet.add(f.properties.id);
-        });
-      } else {
-        currentCapturedSet = new Set(JSON.parse(localStorage.getItem('capturedSquares') || '[]'));
-      }
+      const currentCapturedSet = capturedSetRef.current;
 
       // Process features in batches to keep UI responsive
       const BATCH_SIZE = 5; // Process 5 features at a time
@@ -581,20 +593,18 @@ export default function Home() {
           const bufferedPath = turf.buffer(feature as any, 0.003, { units: 'kilometers' });
           const pathBbox = turf.bbox(bufferedPath as any);
 
-          const candidates = gridData.features.filter((cell: any) => {
-            const cLat = cell.properties.centerLat;
-            const cLon = cell.properties.centerLon;
-            return cLat >= pathBbox[1] - 0.0002 && cLat <= pathBbox[3] + 0.0002 &&
-              cLon >= pathBbox[0] - 0.0002 && cLon <= pathBbox[2] + 0.0002;
-          });
+          // Use Flatbush to find candidates efficiently
+          const candidateIndices = gridIndexRef.current!.search(
+            pathBbox[0], pathBbox[1], pathBbox[2], pathBbox[3]
+          );
 
-          for (const cell of candidates) {
-            if (currentCapturedSet.has(cell.properties.id)) continue;
+          for (const idx of candidateIndices) {
+            const cell = gridFeaturesRef.current[idx];
+            if (currentCapturedSet.has(cell.id)) continue;
 
             if (turf.booleanIntersects(cell as any, bufferedPath as any)) {
-              cell.properties.captured = true;
-              newCapturedIds.push(cell.properties.id);
-              currentCapturedSet.add(cell.properties.id);
+              newCapturedIds.push(cell.id);
+              currentCapturedSet.add(cell.id);
               newCapturedCount++;
             }
           }
@@ -639,17 +649,17 @@ export default function Home() {
               description: `${firestoreError.message}. Twój postęp nie został zapisany. Sprawdź połączenie z internetem.`,
               duration: 5000,
             });
-            newCapturedIds.forEach(id => {
-              const cell = gridData.features.find((f: any) => f.properties.id === id);
-              if (cell) cell.properties.captured = false;
-            });
-            mapRef.current?.updateGridData({ ...gridData });
+            // Revert local optimistic update
+            newCapturedIds.forEach(id => currentCapturedSet.delete(id));
+            if (mapRef.current) {
+              mapRef.current.updateCapturedState(Array.from(currentCapturedSet));
+            }
             setUploading(false);
             return;
           }
         } else {
           localStorage.setItem('capturedSquares', JSON.stringify(Array.from(currentCapturedSet)));
-          updateGridWithCaptured(currentCapturedSet);
+          updateMapCapturedState();
         }
       }
 
@@ -706,16 +716,16 @@ export default function Home() {
   };
 
   // Calculate visible grid count based on selected districts
-  const visibleGridCount = gridData
-    ? gridData.features.filter((f: any) =>
-      selectedDistricts.length === 0 || selectedDistricts.includes(f.properties.district)
+  const visibleGridCount = gridFeaturesRef.current
+    ? gridFeaturesRef.current.filter((f: any) =>
+      selectedDistricts.length === 0 || selectedDistricts.includes(f.properties.d) // Updated property 'd'
     ).length
     : 0;
 
-  const visibleCapturedCount = gridData && stats
-    ? gridData.features.filter((f: any) =>
-      f.properties.captured &&
-      (selectedDistricts.length === 0 || selectedDistricts.includes(f.properties.district))
+  const visibleCapturedCount = gridFeaturesRef.current && stats
+    ? gridFeaturesRef.current.filter((f: any) =>
+      capturedSetRef.current.has(f.id) &&
+      (selectedDistricts.length === 0 || selectedDistricts.includes(f.properties.d)) // Updated property 'd'
     ).length
     : 0;
 
@@ -725,7 +735,7 @@ export default function Home() {
   const remaining = visibleGridCount - visibleCapturedCount;
 
   const syncStrava = async () => {
-    if (!user || !gridData) {
+    if (!user || !gridFeaturesRef.current.length) {
       console.log('Sync skipped: user or gridData not ready');
       return;
     }
@@ -748,11 +758,26 @@ export default function Home() {
 
         if (data.success && data.newActivities?.features?.length > 0) {
           console.log(`Processing ${data.newActivities.features.length} new activities...`);
-          await processRecordedActivity(data.newActivities);
-          toast.success(`Zsynchronizowano ${data.newActivities.features.length} spacerów ze Strava!`);
+          const capturedCount = await processRecordedActivity(data.newActivities);
+
+          const activityCount = data.newActivities.features.length;
+          const activityText = activityCount === 1 ? 'aktywność' : activityCount < 5 ? 'aktywności' : 'aktywności';
+          const squareText = capturedCount === 1 ? 'nowy kwadrat' : capturedCount < 5 ? 'nowe kwadraty' : 'nowych kwadratów';
+
+          if (capturedCount > 0) {
+            toast.success(`Znaleziono ${activityCount} ${activityText} ze Strava!`, {
+              description: `Zaimportowano i zdobyto ${capturedCount} ${squareText}.`,
+              duration: 5000,
+            });
+          } else {
+            toast.info(`Znaleziono ${activityCount} ${activityText} ze Strava`, {
+              description: 'Wszystkie kwadraty z tych tras były już zdobyte.',
+              duration: 4000,
+            });
+          }
         } else {
           console.log('No new activities to sync');
-          toast.info('Brak nowych spacerów do zsynchronizowania');
+          // Don't show notification for no new activities during auto-sync
         }
       } else {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
@@ -767,14 +792,14 @@ export default function Home() {
 
   // Auto-sync Strava when user and grid are ready
   useEffect(() => {
-    if (user && gridData && !isSyncing) {
+    if (user && gridFeaturesRef.current.length > 0 && !isSyncing) {
       // Small delay to ensure everything is settled
       const timer = setTimeout(() => {
         syncStrava();
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [user, gridData]); // Run once when user/grid becomes available
+  }, [user, totalGridCount]); // Run once when user/grid becomes available (totalGridCount changes when grid loads)
 
   return (
     <main className="flex h-screen flex-col">

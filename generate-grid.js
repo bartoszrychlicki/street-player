@@ -29,7 +29,7 @@ console.log('✓ Loaded districts data');
 // Overpass API query to get paths for a given bbox
 function buildOverpassQuery(bbox) {
     return `
-[out:json][timeout:60];
+[out:json][timeout:180];
 (
   way["highway"="footway"](${bbox[1]},${bbox[0]},${bbox[3]},${bbox[2]});
   way["highway"="path"](${bbox[1]},${bbox[0]},${bbox[3]},${bbox[2]});
@@ -160,17 +160,18 @@ function generateGridForDistrict(districtFeature, pathsGeoJSON, gridSizeMeters) 
                 const centerLon = gridOriginLon + (col + 0.5) * lonStep;
                 const centerPoint = turf.point([centerLon, centerLat]);
 
-                // Create square polygon for intersection check
+                // Calculate cell corners
                 const cellLat = gridOriginLat + row * latStep;
                 const cellLon = gridOriginLon + col * lonStep;
 
-                const square = turf.polygon([[
-                    [cellLon, cellLat],
-                    [cellLon + lonStep, cellLat],
-                    [cellLon + lonStep, cellLat + latStep],
-                    [cellLon, cellLat + latStep],
-                    [cellLon, cellLat]
-                ]]);
+                // Create square polygon for intersection check
+                // Round coordinates to 6 decimal places to save space
+                const p1 = [Number(cellLon.toFixed(6)), Number(cellLat.toFixed(6))];
+                const p2 = [Number((cellLon + lonStep).toFixed(6)), Number(cellLat.toFixed(6))];
+                const p3 = [Number((cellLon + lonStep).toFixed(6)), Number((cellLat + latStep).toFixed(6))];
+                const p4 = [Number(cellLon.toFixed(6)), Number((cellLat + latStep).toFixed(6))];
+
+                const square = turf.polygon([[p1, p2, p3, p4, p1]]);
 
                 // Check EXACT intersection
                 if (turf.booleanIntersects(square, bufferedPath)) {
@@ -179,8 +180,8 @@ function generateGridForDistrict(districtFeature, pathsGeoJSON, gridSizeMeters) 
                         if (gridSquares.has(key)) {
                             // Square already exists, add this road type to it
                             const existingSquare = gridSquares.get(key);
-                            if (!existingSquare.properties.roadTypes.includes(pathHighway)) {
-                                existingSquare.properties.roadTypes.push(pathHighway);
+                            if (!existingSquare.properties.rt.includes(pathHighway)) {
+                                existingSquare.properties.rt.push(pathHighway);
                             }
                         } else {
                             // Create new square properties
@@ -198,15 +199,18 @@ function generateGridForDistrict(districtFeature, pathsGeoJSON, gridSizeMeters) 
                                 .replace(/ź/g, 'z')
                                 .replace(/ż/g, 'z');
 
+                            // Move ID to top-level for feature-state support
+                            square.id = `${districtId}_${row}_${col}`;
+
                             square.properties = {
-                                id: `${districtId}_${row}_${col}`,
-                                district: districtName,
-                                captured: false,
-                                centerLat: centerLat,
-                                centerLon: centerLon,
-                                gridRow: row,
-                                gridCol: col,
-                                roadTypes: [pathHighway]
+                                // id: ... removed from properties, now at top level
+                                d: districtName, // Shorten key
+                                // captured: false, // REMOVED: dynamic state
+                                cLat: Number(centerLat.toFixed(6)), // Shorten key
+                                cLon: Number(centerLon.toFixed(6)), // Shorten key
+                                // gridRow: row, // Removed to save space, available in ID
+                                // gridCol: col, // Removed to save space, available in ID
+                                rt: [pathHighway] // Shorten key 'roadTypes' -> 'rt'
                             };
 
                             gridSquares.set(key, square);
@@ -250,12 +254,6 @@ async function main() {
             const bbox = turf.bbox(district);
             console.log('✓ Bounding box:', bbox);
 
-            // Fetch paths from OSM
-            const osmElements = await fetchPaths(bbox, districtNameFixed);
-
-            // Convert to GeoJSON
-            const pathsGeoJSON = osmToGeoJSON(osmElements);
-
             // Calculate clean district ID from the FIXED name
             const districtId = districtNameFixed.toLowerCase()
                 .replace(/\s+/g, '_')
@@ -271,8 +269,21 @@ async function main() {
                 .replace(/ż/g, 'z');
 
             const pathsOutputPath = path.join(__dirname, 'public', `${districtId}-paths.geojson`);
-            // fs.writeFileSync(pathsOutputPath, JSON.stringify(pathsGeoJSON, null, 2));
-            // console.log(`✓ Saved paths to ${pathsOutputPath}`);
+            let pathsGeoJSON;
+
+            if (fs.existsSync(pathsOutputPath)) {
+                console.log(`✓ Loading cached paths from ${pathsOutputPath}`);
+                pathsGeoJSON = JSON.parse(fs.readFileSync(pathsOutputPath, 'utf8'));
+            } else {
+                // Fetch paths from OSM
+                const osmElements = await fetchPaths(bbox, districtNameFixed);
+
+                // Convert to GeoJSON
+                pathsGeoJSON = osmToGeoJSON(osmElements);
+
+                fs.writeFileSync(pathsOutputPath, JSON.stringify(pathsGeoJSON, null, 2));
+                console.log(`✓ Saved paths to ${pathsOutputPath}`);
+            }
 
             // Generate grid
             const gridSquares = generateGridForDistrict(district, pathsGeoJSON, gridSizeMeters);

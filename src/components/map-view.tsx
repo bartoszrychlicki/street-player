@@ -7,6 +7,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 export interface MapViewRef {
   refreshGrid: () => void;
   updateGridData: (data: any) => void;
+  updateCapturedState: (capturedIds: string[]) => void;
   updateRecordingRoute: (points: { lat: number; lon: number }[]) => void;
 }
 
@@ -36,6 +37,20 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
         const source = map.current.getSource('grid') as maplibregl.GeoJSONSource;
         source.setData(data);
       }
+    },
+    updateCapturedState: (capturedIds: string[]) => {
+      if (!map.current || !map.current.getSource('grid')) return;
+
+      // Remove all feature states from grid source
+      map.current.removeFeatureState({ source: 'grid' });
+
+      // Batch updates if possible, but setFeatureState is per feature
+      capturedIds.forEach(id => {
+        map.current?.setFeatureState(
+          { source: 'grid', id },
+          { captured: true }
+        );
+      });
     },
     updateRecordingRoute: (points: { lat: number; lon: number }[]) => {
       if (map.current && map.current.getSource('recording-route')) {
@@ -144,13 +159,13 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
         paint: {
           'fill-color': [
             'case',
-            ['boolean', ['get', 'captured'], false],
+            ['boolean', ['feature-state', 'captured'], false],
             '#00ff00', // Captured: Green
             '#ff0000'  // Uncaptured: Red
           ],
           'fill-opacity': [
             'case',
-            ['boolean', ['get', 'captured'], false],
+            ['boolean', ['feature-state', 'captured'], false],
             0.4, // Captured: more visible
             0.15 // Uncaptured: faint
           ]
@@ -165,7 +180,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
         paint: {
           'line-color': [
             'case',
-            ['boolean', ['get', 'captured'], false],
+            ['boolean', ['feature-state', 'captured'], false],
             '#00cc00', // Captured: Darker Green
             '#ff0000'  // Uncaptured: Red
           ],
@@ -231,7 +246,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
         const conditions = selectedRoadTypes.map(type => [
           'in',
           type,
-          ['get', 'roadTypes']
+          ['get', 'rt'] // Updated property name
         ]);
 
         if (conditions.length === 1) {
@@ -272,7 +287,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
         const roadConditions = selectedRoadTypes.map(type => [
           'in',
           type,
-          ['get', 'roadTypes']
+          ['get', 'rt'] // Updated property name
         ]);
         roadTypeFilter = roadConditions.length === 1 ? roadConditions[0] : ['any', ...roadConditions];
       }
@@ -283,7 +298,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
       } else {
         const districtConditions = selectedDistricts.map(district => [
           '==',
-          ['get', 'district'],
+          ['get', 'd'], // Updated property name
           district
         ]);
         districtFilter = districtConditions.length === 1 ? districtConditions[0] : ['any', ...districtConditions];
