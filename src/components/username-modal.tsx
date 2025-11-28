@@ -42,8 +42,9 @@ export default function UsernameModal({
         try {
             await onSave(username);
             onClose();
-        } catch (err: any) {
-            setError(err.message || "Nie udało się zapisać pseudonimu");
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Nie udało się zapisać pseudonimu";
+            setError(message);
         } finally {
             setSaving(false);
         }

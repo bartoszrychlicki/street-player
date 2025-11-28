@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
-import * as turf from '@turf/turf';
 
 async function getValidAccessToken(uid: string) {
     const db = getAdminDb();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { User } from "firebase/auth";
 
 interface SettingsModalProps {
@@ -24,14 +24,7 @@ export default function SettingsModal({
     const [loadingStrava, setLoadingStrava] = useState(false);
     const [syncing, setSyncing] = useState(false);
 
-    // Check Strava status when modal opens
-    useEffect(() => {
-        if (isOpen && user) {
-            checkStravaStatus();
-        }
-    }, [isOpen, user]);
-
-    const checkStravaStatus = async () => {
+    const checkStravaStatus = useCallback(async () => {
         if (!user) return;
         try {
             const token = await user.getIdToken();
@@ -45,7 +38,14 @@ export default function SettingsModal({
         } catch (err) {
             console.error('Failed to check Strava status', err);
         }
-    };
+    }, [user]);
+
+    // Check Strava status when modal opens
+    useEffect(() => {
+        if (isOpen && user) {
+            checkStravaStatus();
+        }
+    }, [checkStravaStatus, isOpen, user]);
 
     const handleConnectStrava = async () => {
         setLoadingStrava(true);

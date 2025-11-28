@@ -38,28 +38,32 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
                             </div>
                             <div>
                                 <h3 className="font-bold text-lg text-gray-900">Opcja 1: Nagrywanie w przeglądarce</h3>
-                                <p className="text-sm text-gray-600 mt-1">Najprostsze, ale wymaga uwagi</p>
+                                <p className="text-sm text-gray-600 mt-1">Najprostsze, ale pamiętaj o ograniczeniach w tle</p>
                             </div>
                         </div>
 
                         <ol className="space-y-2 text-sm text-gray-700 ml-2">
                             <li className="flex gap-2">
                                 <span className="font-bold text-green-600 min-w-[20px]">1.</span>
-                                <span>Kliknij "Rozpocznij spacer" w aplikacji</span>
+                                <span>Włącz przełącznik <strong>Dokładne śledzenie</strong> w górnym pasku</span>
                             </li>
                             <li className="flex gap-2">
                                 <span className="font-bold text-green-600 min-w-[20px]">2.</span>
-                                <span><strong className="text-red-600">WAŻNE:</strong> Nie blokuj telefonu i nie zamykaj przeglądarki podczas spaceru</span>
+                                <span>Jeśli dostępne, kliknij <strong>Utrzymaj ekran</strong> (zapobiega usypianiu i poprawia częstotliwość GPS)</span>
                             </li>
                             <li className="flex gap-2">
                                 <span className="font-bold text-green-600 min-w-[20px]">3.</span>
-                                <span>Po zakończeniu kliknij "Zakończ spacer"</span>
+                                <span><strong className="text-red-600">WAŻNE:</strong> Trzymaj aplikację otwartą; w tle próbkowanie może zwolnić</span>
+                            </li>
+                            <li className="flex gap-2">
+                                <span className="font-bold text-green-600 min-w-[20px]">4.</span>
+                                <span>Po zakończeniu kliknij Zakończ spacer</span>
                             </li>
                         </ol>
 
                         <div className="mt-4 bg-white/60 border border-green-300 rounded-lg p-3">
                             <p className="text-xs text-gray-700">
-                                <strong>💡 Wskazówka:</strong> Jeśli planujesz dłuższy spacer (ponad 30 min) lub chcesz używać innych aplikacji podczas spaceru, użyj Opcji 2.
+                                <strong>💡 Wskazówka:</strong> Dodaj aplikację do ekranu głównego (PWA) na Androidzie dla bardziej stabilnej pracy w tle. Długie spacery? Rozważ import GPX (poniżej).
                             </p>
                         </div>
                     </div>
@@ -94,7 +98,7 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
                                         <li>• Otwórz <a href="https://www.strava.com" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline">strava.com</a> na komputerze</li>
                                         <li>• Przejdź do swojej aktywności</li>
                                         <li>• Kliknij ikonę <strong>klucza</strong> (⚙️) w lewym menu</li>
-                                        <li>• Wybierz <strong>"Export GPX"</strong></li>
+                                        <li>• Wybierz <strong>Export GPX</strong></li>
                                         <li>• Zapisz plik na dysku</li>
                                     </ul>
                                 </div>
@@ -103,7 +107,7 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
                                 <span className="font-bold text-violet-600 min-w-[20px]">3.</span>
                                 <div>
                                     <strong>Importuj do Street Player</strong>
-                                    <p className="text-xs text-gray-500 mt-1">Zaloguj się w Street Player i kliknij "Importuj GPX" w górnym menu</p>
+                                    <p className="text-xs text-gray-500 mt-1">Zaloguj się w Street Player i kliknij Importuj GPX w górnym menu</p>
                                 </div>
                             </li>
                         </ol>

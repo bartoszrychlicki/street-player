@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const turf = require('@turf/turf');
 const axios = require('axios');
 const fs = require('fs');

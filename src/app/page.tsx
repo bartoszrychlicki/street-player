@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useRef, useState, useEffect, useCallback } from "react";
 import MapView, { MapViewRef } from "@/components/map-view";
 import { gpx } from "@tmcw/togeojson";
 import * as turf from "@turf/turf";
@@ -17,6 +18,25 @@ import HelpModal from "@/components/help-modal";
 import UsernameModal from "@/components/username-modal";
 import SettingsModal from "@/components/settings-modal";
 import { generateUsername } from "@/lib/username-generator";
+
+type RecordedPoint = { lat: number; lon: number; timestamp: number; accuracy?: number };
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
+
+type WakeLockSentinelLike = {
+  release?: () => Promise<void>;
+  addEventListener: (type: 'release', listener: () => void) => void;
+};
+
+type WakeLockNavigator = Navigator & {
+  wakeLock?: {
+    request: (type: 'screen') => Promise<WakeLockSentinelLike>;
+  };
+  standalone?: boolean;
+};
 
 const ROAD_TYPES = [
   { id: 'footway', label: 'Chodnik', description: 'Ścieżki dla pieszych' },
@@ -54,7 +74,7 @@ export default function Home() {
 
   // Refs for data storage (performance optimization)
   const gridIndexRef = useRef<Flatbush | null>(null);
-  const gridFeaturesRef = useRef<any[]>([]);
+  const gridFeaturesRef = useRef<GeoJSON.Feature[]>([]);
   const capturedSetRef = useRef<Set<string>>(new Set());
 
   // Auth State
@@ -70,11 +90,34 @@ export default function Home() {
 
   // GPS Recording State
   const [isRecording, setIsRecording] = useState(false);
-  const [recordedPoints, setRecordedPoints] = useState<{ lat: number; lon: number; timestamp: number; accuracy?: number }[]>([]);
+  const [recordedPoints, setRecordedPoints] = useState<RecordedPoint[]>([]);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const watchIdRef = useRef<number | null>(null);
   const [locationPermission, setLocationPermission] = useState<PermissionState | 'unknown'>('unknown');
+  const [highAccuracyEnabled, setHighAccuracyEnabled] = useState(true);
+  const [keepScreenOn, setKeepScreenOn] = useState(false);
+  const [wakeLockSupported, setWakeLockSupported] = useState(false);
+  const [wakeLockActive, setWakeLockActive] = useState(false);
+  const [wakeLockError, setWakeLockError] = useState<string | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
+  const [lastFixTimestamp, setLastFixTimestamp] = useState<number | null>(null);
+  const [lastFixAccuracy, setLastFixAccuracy] = useState<number | null>(null);
+  const [gpsStale, setGpsStale] = useState(false);
+  const [backgroundWarning, setBackgroundWarning] = useState(false);
+  const gpsGapNotifiedRef = useRef(false);
+  const [qualityStats, setQualityStats] = useState({
+    droppedForAccuracy: 0,
+    droppedForSpeed: 0,
+    staleGaps: 0
+  });
+
+  // PWA nudges
+  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [showPwaNudge, setShowPwaNudge] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [pwaDismissed, setPwaDismissed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Check location permission on mount
   useEffect(() => {
@@ -91,6 +134,42 @@ export default function Home() {
     });
   }, []);
 
+  // Hydrate preferences and capability flags
+  useEffect(() => {
+    const savedAccuracy = localStorage.getItem('highAccuracyEnabled');
+    if (savedAccuracy !== null) {
+      setHighAccuracyEnabled(savedAccuracy === 'true');
+    }
+    const savedKeepScreenOn = localStorage.getItem('keepScreenOn');
+    if (savedKeepScreenOn !== null) {
+      setKeepScreenOn(savedKeepScreenOn === 'true');
+    }
+    setWakeLockSupported('wakeLock' in navigator);
+    const navWithExtras = window.navigator as WakeLockNavigator;
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || !!navWithExtras.standalone;
+    setIsStandalone(standalone);
+
+    const media = window.matchMedia('(max-width: 768px)');
+    const updateMobile = () => setIsMobile(media.matches);
+    updateMobile();
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      if (!isMobile) return;
+      const promptEvent = event as BeforeInstallPromptEvent;
+      setInstallPromptEvent(promptEvent);
+      setShowPwaNudge(true);
+    };
+
+    media.addEventListener('change', updateMobile);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      media.removeEventListener('change', updateMobile);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, [isMobile]);
+
   // Load grid data dynamically based on selected districts
   useEffect(() => {
     const loadGrids = async () => {
@@ -104,7 +183,7 @@ export default function Home() {
         return;
       }
 
-      const allFeatures: any[] = [];
+      const allFeatures: GeoJSON.Feature[] = [];
 
       try {
         const promises = selectedDistricts.map(async (districtName) => {
@@ -333,6 +412,108 @@ export default function Home() {
     }
   };
 
+  const requestWakeLock = useCallback(async () => {
+    if (!keepScreenOn || !wakeLockSupported) return;
+    setWakeLockError(null);
+
+    try {
+      const navWithWakeLock = navigator as WakeLockNavigator;
+      if (!navWithWakeLock.wakeLock?.request) {
+        setWakeLockError('Wake Lock nie jest wspierany w tej przeglądarce');
+        return;
+      }
+
+      const sentinel = await navWithWakeLock.wakeLock.request('screen');
+      wakeLockRef.current = sentinel;
+      setWakeLockActive(true);
+
+      sentinel.addEventListener('release', () => {
+        setWakeLockActive(false);
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Nie udało się utrzymać ekranu aktywnego';
+      console.error('Wake Lock error:', err);
+      setWakeLockError(message);
+      setWakeLockActive(false);
+    }
+  }, [keepScreenOn, wakeLockSupported]);
+
+  const releaseWakeLock = useCallback(async () => {
+    try {
+      if (wakeLockRef.current) {
+        await wakeLockRef.current.release?.();
+      }
+    } catch (err) {
+      console.error('Wake Lock release error:', err);
+    } finally {
+      wakeLockRef.current = null;
+      setWakeLockActive(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('highAccuracyEnabled', String(highAccuracyEnabled));
+  }, [highAccuracyEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('keepScreenOn', String(keepScreenOn));
+    if (keepScreenOn && isRecording) {
+      requestWakeLock();
+    } else if (!keepScreenOn) {
+      releaseWakeLock();
+    }
+  }, [keepScreenOn, isRecording, releaseWakeLock, requestWakeLock]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && keepScreenOn && isRecording) {
+        requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [keepScreenOn, isRecording, requestWakeLock]);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    if (!isStandalone && !pwaDismissed && !showPwaNudge && !installPromptEvent) {
+      const timer = setTimeout(() => setShowPwaNudge(true), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [installPromptEvent, isMobile, isStandalone, pwaDismissed, showPwaNudge]);
+
+  useEffect(() => {
+    return () => {
+      releaseWakeLock();
+    };
+  }, [releaseWakeLock]);
+
+  const handleInstallPwa = async () => {
+    if (installPromptEvent) {
+      await installPromptEvent.prompt();
+      const result = await installPromptEvent.userChoice;
+      if (result.outcome === 'accepted') {
+        toast.success('Dziękujemy! Aplikacja zostanie zainstalowana na ekranie głównym.');
+      }
+      setInstallPromptEvent(null);
+      setShowPwaNudge(false);
+      return;
+    }
+
+    toast.info('Użyj opcji przeglądarki „Dodaj do ekranu głównego”, aby działać stabilniej w tle.');
+    setShowPwaNudge(false);
+  };
+
+  const toggleHighAccuracy = () => setHighAccuracyEnabled(prev => !prev);
+  const toggleKeepScreenOn = () => setKeepScreenOn(prev => !prev);
+  const handleDismissPwaNudge = () => {
+    setPwaDismissed(true);
+    setShowPwaNudge(false);
+  };
+
   // GPS Recording Functions
   const startRecording = () => {
     if (!navigator.geolocation) {
@@ -347,6 +528,20 @@ export default function Home() {
     setStartTime(Date.now());
     setRecordedPoints([]);
     setRecordingDuration(0);
+    setLastFixTimestamp(null);
+    setLastFixAccuracy(null);
+    setGpsStale(false);
+    setBackgroundWarning(false);
+    gpsGapNotifiedRef.current = false;
+    setQualityStats({
+      droppedForAccuracy: 0,
+      droppedForSpeed: 0,
+      staleGaps: 0
+    });
+
+    if (keepScreenOn) {
+      requestWakeLock();
+    }
 
     toast.success('Nagrywanie rozpoczęte', {
       description: 'Spacer musi trwać minimum 1 minutę.',
@@ -356,6 +551,11 @@ export default function Home() {
 
   const stopRecording = async () => {
     setIsRecording(false);
+    setGpsStale(false);
+    setBackgroundWarning(false);
+    if (keepScreenOn || wakeLockActive) {
+      releaseWakeLock();
+    }
 
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
@@ -403,10 +603,12 @@ export default function Home() {
     setRecordedPoints([]);
     setStartTime(null);
     setRecordingDuration(0);
+    setLastFixTimestamp(null);
+    setLastFixAccuracy(null);
     localStorage.removeItem('activeRecording');
   };
 
-  const processRecordedActivity = async (geojson: any): Promise<number> => {
+  const processRecordedActivity = useCallback(async (geojson: any): Promise<number> => {
     if (!gridFeaturesRef.current.length || !gridIndexRef.current) return 0;
 
     let newCapturedCount = 0;
@@ -502,7 +704,7 @@ export default function Home() {
     }
 
     return newCapturedCount;
-  };
+  }, [user]);
 
   // GPS Tracking Hook
   useEffect(() => {
@@ -510,24 +712,56 @@ export default function Home() {
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
-        const point = {
+        const now = Date.now();
+        const point: RecordedPoint = {
           lat: position.coords.latitude,
           lon: position.coords.longitude,
-          timestamp: Date.now(),
+          timestamp: now,
           accuracy: position.coords.accuracy
         };
 
+        setLastFixTimestamp(now);
+        setLastFixAccuracy(point.accuracy ?? null);
+        setGpsStale(false);
+        setBackgroundWarning(false);
+        gpsGapNotifiedRef.current = false;
+
         setRecordedPoints(prev => {
+          const last = prev[prev.length - 1];
+          const qualityCutoff = highAccuracyEnabled ? 45 : 75; // meters
+          let dropReason: 'accuracy' | 'speed' | null = null;
+
+          if (point.accuracy !== undefined && point.accuracy > qualityCutoff) {
+            dropReason = 'accuracy';
+          }
+
+          if (!dropReason && last) {
+            const secondsSinceLast = (now - last.timestamp) / 1000;
+            if (secondsSinceLast > 0) {
+              const distanceKm = turf.distance([last.lon, last.lat], [point.lon, point.lat], { units: 'kilometers' });
+              const speedMps = (distanceKm * 1000) / secondsSinceLast;
+              if (speedMps > 12) {
+                dropReason = 'speed';
+              }
+            }
+          }
+
+          if (dropReason) {
+            setQualityStats(prevStats => ({
+              ...prevStats,
+              droppedForAccuracy: prevStats.droppedForAccuracy + (dropReason === 'accuracy' ? 1 : 0),
+              droppedForSpeed: prevStats.droppedForSpeed + (dropReason === 'speed' ? 1 : 0)
+            }));
+            return prev;
+          }
+
           const updated = [...prev, point];
-          // Auto-save to localStorage
           localStorage.setItem('activeRecording', JSON.stringify({
             points: updated,
-            startTime
+            startTime: startTime ?? now
           }));
           return updated;
         });
-
-
       },
       (error) => {
         console.error('GPS error:', error);
@@ -537,8 +771,8 @@ export default function Home() {
         });
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000,
+        enableHighAccuracy: highAccuracyEnabled,
+        timeout: highAccuracyEnabled ? 8000 : 20000,
         maximumAge: 0
       }
     );
@@ -548,7 +782,7 @@ export default function Home() {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
     };
-  }, [isRecording, startTime]);
+  }, [isRecording, startTime, highAccuracyEnabled]);
 
   // Update map route when points change
   useEffect(() => {
@@ -556,6 +790,34 @@ export default function Home() {
       mapRef.current.updateRecordingRoute(recordedPoints);
     }
   }, [recordedPoints, isRecording]);
+
+  // Detect stale GPS gaps and background throttling
+  useEffect(() => {
+    if (!isRecording) return;
+
+    const timer = setInterval(() => {
+      if (!lastFixTimestamp) return;
+      const delta = Date.now() - lastFixTimestamp;
+      const stale = delta > 30000;
+      const throttled = delta > 45000;
+      setGpsStale(stale);
+      setBackgroundWarning(throttled);
+
+      if (throttled && !gpsGapNotifiedRef.current) {
+        setQualityStats(prev => ({
+          ...prev,
+          staleGaps: prev.staleGaps + 1
+        }));
+        toast.warning('GPS zwolnił w tle', {
+          description: 'System ograniczył próbkowanie. Włącz utrzymanie ekranu lub wróć do aplikacji.',
+          duration: 5000,
+        });
+        gpsGapNotifiedRef.current = true;
+      }
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [isRecording, lastFixTimestamp]);
 
   // Duration Timer
   useEffect(() => {
@@ -583,6 +845,11 @@ export default function Home() {
             setRecordedPoints(points);
             setStartTime(savedStart);
             setIsRecording(true);
+            if (points.length > 0) {
+              const lastPoint = points[points.length - 1];
+              setLastFixTimestamp(lastPoint.timestamp);
+              setLastFixAccuracy(lastPoint.accuracy ?? null);
+            }
             toast.info('Wznowiono nagrywanie', { duration: 3000 });
           } else {
             localStorage.removeItem('activeRecording');
@@ -768,8 +1035,24 @@ export default function Home() {
     ? (visibleCapturedCount / visibleGridCount) * 100
     : 0;
   const remaining = visibleGridCount - visibleCapturedCount;
+  const lastFixSecondsAgo = lastFixTimestamp ? Math.floor((Date.now() - lastFixTimestamp) / 1000) : null;
+  const accuracyDisplay = lastFixAccuracy !== null ? `${Math.round(lastFixAccuracy)} m` : 'brak danych';
+  const gpsStatusText = !isRecording
+    ? 'Gotowy do nagrania'
+    : gpsStale
+      ? 'Ograniczone próbkowanie (tło)'
+      : lastFixTimestamp
+        ? 'GPS aktywny'
+        : 'Oczekiwanie na fix...';
+  const gpsStatusClass = !isRecording
+    ? 'bg-gray-100 text-gray-700'
+    : gpsStale
+      ? 'bg-amber-100 text-amber-800'
+      : lastFixTimestamp
+        ? 'bg-emerald-100 text-emerald-700'
+        : 'bg-gray-100 text-gray-700';
 
-  const syncStrava = async () => {
+  const syncStrava = useCallback(async () => {
     if (!user || !gridFeaturesRef.current.length) {
       console.log('Sync skipped: user or gridData not ready');
       return;
@@ -823,7 +1106,7 @@ export default function Home() {
       console.error('Strava sync error:', e);
       toast.error('Błąd podczas synchronizacji ze Strava');
     }
-  };
+  }, [processRecordedActivity, user]);
 
   // Auto-sync Strava when user and grid are ready
   useEffect(() => {
@@ -834,7 +1117,7 @@ export default function Home() {
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [user, totalGridCount]); // Run once when user/grid becomes available (totalGridCount changes when grid loads)
+  }, [isSyncing, syncStrava, totalGridCount, user]); // Run once when user/grid becomes available (totalGridCount changes when grid loads)
 
   return (
     <main className="flex h-screen flex-col">
@@ -1090,6 +1373,88 @@ export default function Home() {
         </div>
       </div>
 
+      {/* GPS helper bar (mobile only) */}
+      {isMobile && (
+        <div className="bg-slate-900 text-white px-3 sm:px-6 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-emerald-600/80">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.1 0-2 .9-2 2m6 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2v2m0 16v2m10-10h-2M4 12H2m15.364-6.364l-1.414 1.414M8.05 15.95l-1.414 1.414m10.728 0l-1.414-1.414M8.05 8.05L6.636 6.636" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Tryb przeglądarki — wskazówki</p>
+              <p className="text-xs text-slate-200">
+                W tle GPS może zwolnić. Włącz poniższe opcje, aby utrzymać częstsze próbkowanie.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <span className={`text-[11px] px-2 py-1 rounded-full font-semibold ${gpsStatusClass}`}>
+                  {gpsStatusText}
+                </span>
+                <span className="text-[11px] px-2 py-1 rounded-full bg-slate-800 text-slate-100">
+                  {lastFixSecondsAgo !== null ? `Ostatni fix ${lastFixSecondsAgo}s temu` : 'Czekam na pierwszy punkt'}
+                </span>
+                <span className="text-[11px] px-2 py-1 rounded-full bg-slate-800 text-slate-100">
+                  Dokładność: {accuracyDisplay}
+                </span>
+                {backgroundWarning && (
+                  <span className="text-[11px] px-2 py-1 rounded-full bg-amber-200 text-amber-800 font-semibold">
+                    System ogranicza GPS w tle
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={toggleHighAccuracy}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${highAccuracyEnabled
+                ? 'bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-600'
+                : 'bg-slate-800 text-slate-100 border-slate-700 hover:bg-slate-700'
+                }`}
+            >
+              {highAccuracyEnabled ? 'Dokładne śledzenie: ON' : 'Dokładne śledzenie: OFF'}
+            </button>
+            <button
+              onClick={toggleKeepScreenOn}
+              disabled={!wakeLockSupported}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1 ${keepScreenOn && wakeLockSupported
+                ? 'bg-amber-500 text-white border-amber-300 hover:bg-amber-600'
+                : 'bg-slate-800 text-slate-100 border-slate-700 hover:bg-slate-700'
+                } ${!wakeLockSupported ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l7-9h-3l1-3-6 6h3z" />
+              </svg>
+              {keepScreenOn && wakeLockSupported ? 'Ekran aktywny' : 'Utrzymaj ekran'}
+            </button>
+            {showPwaNudge && !isStandalone && !pwaDismissed && (
+              <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs">
+                <button
+                  onClick={handleInstallPwa}
+                  className="font-semibold text-white hover:text-emerald-200 transition-colors"
+                >
+                  Dodaj do ekranu głównego
+                </button>
+                <button
+                  onClick={handleDismissPwaNudge}
+                  className="text-slate-400 hover:text-white transition-colors"
+                  aria-label="Zamknij podpowiedź PWA"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+            {wakeLockError && (
+              <span className="text-[11px] text-amber-200 font-medium">
+                {wakeLockError}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Filter Panel */}
       {showFilters && (
         <div className="bg-gray-50 border-b border-gray-200 px-6 py-4">
@@ -1200,16 +1565,46 @@ export default function Home() {
                 {recordedPoints.length} punktów GPS
               </div>
 
+              {isMobile && (
+                <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="bg-slate-50 border border-slate-100 rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs sm:text-sm font-semibold text-slate-800">GPS</p>
+                      <span className={`text-[11px] px-2 py-1 rounded-full font-semibold ${gpsStatusClass}`}>
+                        {gpsStatusText}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 mt-1">
+                      Ostatni fix: {lastFixSecondsAgo !== null ? `${lastFixSecondsAgo}s temu` : 'oczekiwanie'} • Dokładność: {accuracyDisplay}
+                    </p>
+                    {backgroundWarning && (
+                      <p className="text-[11px] text-amber-700 mt-1 font-semibold">
+                        System może ograniczać próbkowanie w tle.
+                      </p>
+                    )}
+                  </div>
+                  <div className="bg-slate-50 border border-slate-100 rounded-lg p-3">
+                    <p className="text-xs sm:text-sm font-semibold text-slate-800">Jakość trasy</p>
+                    <p className="text-[11px] text-slate-600 mt-1">
+                      Odrzucone punkty: {qualityStats.droppedForAccuracy + qualityStats.droppedForSpeed} (dokł.: {qualityStats.droppedForAccuracy}, skoki: {qualityStats.droppedForSpeed})
+                    </p>
+                    <p className="text-[11px] text-slate-600">
+                      Przerwy w tle: {qualityStats.staleGaps}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Warning */}
               <div className="w-full bg-amber-50 border border-amber-200 rounded-lg p-2 sm:p-3 mt-1">
                 <p className="text-xs text-amber-800 text-center leading-relaxed">
-                  ⚠️ Nie blokuj telefonu i nie zamykaj przeglądarki podczas nagrywania.
+                  ⚠️ Najlepsza dokładność: pozostaw aplikację otwartą lub włącz „Utrzymaj ekran”. W tle system spowalnia GPS.
                 </p>
                 <button
                   onClick={() => setIsHelpModalOpen(true)}
                   className="text-xs text-amber-700 hover:text-amber-900 underline mt-1 w-full text-center font-medium"
                 >
-                  Alternatywa: Import GPX ze Stravy →
+                  Import GPX po spacerze →
                 </button>
               </div>
 

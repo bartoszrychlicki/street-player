@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -40,7 +41,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
     };
   };
 
-  const logGridStatus = (tag: string) => {
+  const logGridStatus = useCallback((tag: string) => {
     if (!map.current) return;
 
     let sourceFeatures: number | string = 'n/a';
@@ -105,7 +106,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
         outline: summary.outlineFilter
       });
     }
-  };
+  }, [selectedDistricts, selectedRoadTypes]);
 
   useImperativeHandle(ref, () => ({
     refreshGrid: () => {
@@ -166,7 +167,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
 
       // Check if features exist in the source
       const source = map.current.getSource('grid') as maplibregl.GeoJSONSource;
-      // @ts-ignore - accessing internal _data
+      // @ts-expect-error - accessing internal _data
       const sourceData = source._data;
       if (sourceData && sourceData.features) {
         console.log(`Grid source has ${sourceData.features.length} features`);
@@ -432,6 +433,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
     return () => {
       map.current?.remove();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Update filter when selectedRoadTypes changes
@@ -472,7 +474,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
       // Otherwise wait for load event
       map.current.once('load', applyFilter);
     }
-  }, [selectedRoadTypes]);
+  }, [logGridStatus, selectedRoadTypes]);
 
   // Update filter when selectedDistricts changes
   useEffect(() => {
@@ -522,7 +524,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
     } else {
       map.current.once('load', applyFilter);
     }
-  }, [selectedRoadTypes, selectedDistricts]);
+  }, [logGridStatus, selectedDistricts, selectedRoadTypes]);
 
   return (
     <div ref={mapContainer} style={{ width: '100%', height: '100%' }} />

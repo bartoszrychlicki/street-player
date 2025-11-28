@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const shapefile = require('shapefile');
 const proj4 = require('proj4');
 const fs = require('fs');

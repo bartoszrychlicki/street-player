@@ -46,9 +46,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                 await createUserWithEmailAndPassword(auth, email, password);
             }
             onClose();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err.message.replace("Firebase: ", ""));
+            const message = err instanceof Error ? err.message : 'Nie udało się zalogować';
+            setError(message.replace("Firebase: ", ""));
         } finally {
             setLoading(false);
         }
@@ -61,9 +62,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
             const provider = new GoogleAuthProvider();
             await signInWithPopup(auth, provider);
             onClose();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err.message.replace("Firebase: ", ""));
+            const message = err instanceof Error ? err.message : 'Nie udało się zalogować';
+            setError(message.replace("Firebase: ", ""));
         } finally {
             setLoading(false);
         }
