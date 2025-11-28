@@ -641,12 +641,13 @@ export default function Home() {
 
         for (const idx of candidateIndices) {
           const cell = gridFeaturesRef.current[idx];
-          if (currentCapturedSet.has(cell.id)) continue;
+          const cellId = typeof cell.id === 'string' ? cell.id : String(cell.id ?? '');
+          if (currentCapturedSet.has(cellId)) continue;
 
           if (turf.booleanIntersects(cell as any, bufferedPath as any)) {
             // cell.properties.captured = true; // No longer needed
-            newCapturedIds.push(cell.id);
-            currentCapturedSet.add(cell.id);
+            newCapturedIds.push(cellId);
+            currentCapturedSet.add(cellId);
             newCapturedCount++;
           }
         }
@@ -906,11 +907,12 @@ export default function Home() {
 
           for (const idx of candidateIndices) {
             const cell = gridFeaturesRef.current[idx];
-            if (currentCapturedSet.has(cell.id)) continue;
+            const cellId = typeof cell.id === 'string' ? cell.id : String(cell.id ?? '');
+            if (currentCapturedSet.has(cellId)) continue;
 
             if (turf.booleanIntersects(cell as any, bufferedPath as any)) {
-              newCapturedIds.push(cell.id);
-              currentCapturedSet.add(cell.id);
+              newCapturedIds.push(cellId);
+              currentCapturedSet.add(cellId);
               newCapturedCount++;
             }
           }
