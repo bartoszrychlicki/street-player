@@ -162,8 +162,10 @@ export default function Home() {
 
         if (mapRef.current) {
           mapRef.current.updateGridData(combinedData);
-          // Re-apply captured state
-          mapRef.current.updateCapturedState(Array.from(capturedSetRef.current));
+          // Re-apply captured state if we already have it from Firestore
+          if (capturedSetRef.current.size > 0) {
+            mapRef.current.updateCapturedState(Array.from(capturedSetRef.current));
+          }
         }
 
       } catch (err) {
