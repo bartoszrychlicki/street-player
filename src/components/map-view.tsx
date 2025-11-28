@@ -165,21 +165,6 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
       console.log('First 5 IDs:', capturedIds.slice(0, 5));
       capturedIdsRef.current = capturedIds;
 
-      // Check if features exist in the source
-      const source = map.current.getSource('grid') as maplibregl.GeoJSONSource;
-      // @ts-expect-error - accessing internal _data
-      const sourceData = source._data;
-      if (sourceData && sourceData.features) {
-        console.log(`Grid source has ${sourceData.features.length} features`);
-        const firstFeature = sourceData.features[0];
-        console.log('First feature ID:', firstFeature.id);
-        console.log('First feature structure:', {
-          id: firstFeature.id,
-          hasProperties: !!firstFeature.properties,
-          propertiesKeys: firstFeature.properties ? Object.keys(firstFeature.properties) : []
-        });
-      }
-
       // Update underlying data with captured flag for reliable styling
       if (gridDataRef.current) {
         const merged = applyCapturedToData(gridDataRef.current, capturedIds);
