@@ -130,6 +130,12 @@ export default function Home() {
         // Store features in ref
         gridFeaturesRef.current = allFeatures;
         setTotalGridCount(allFeatures.length);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[grid] loaded features', {
+            count: allFeatures.length,
+            sampleIds: allFeatures.slice(0, 5).map(f => f.id)
+          });
+        }
 
         // Build Spatial Index (Flatbush)
         // Initialize with number of items
@@ -166,6 +172,21 @@ export default function Home() {
           if (capturedSetRef.current.size > 0) {
             mapRef.current.updateCapturedState(Array.from(capturedSetRef.current));
           }
+        }
+
+        // Debug intersection between captured IDs and loaded grid IDs
+        if (process.env.NODE_ENV === 'development' && capturedSetRef.current.size > 0) {
+          const gridIds = new Set(allFeatures.map(f => f.id));
+          let hits = 0;
+          capturedSetRef.current.forEach(id => {
+            if (gridIds.has(id)) hits++;
+          });
+          console.log('[capture] intersection', {
+            capturedCount: capturedSetRef.current.size,
+            gridCount: allFeatures.length,
+            hits,
+            misses: capturedSetRef.current.size - hits
+          });
         }
 
       } catch (err) {
@@ -215,10 +236,16 @@ export default function Home() {
           const unsubscribeSnapshot = onSnapshot(userRef, async (docSnap) => {
             if (docSnap.exists()) {
               const data = docSnap.data();
-              const capturedSquares = new Set<string>(data.capturedSquares || []);
+          const capturedSquares = new Set<string>(data.capturedSquares || []);
 
-              capturedSetRef.current = capturedSquares;
-              updateMapCapturedState();
+          capturedSetRef.current = capturedSquares;
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[capture] loaded from Firestore', {
+            count: capturedSquares.size,
+            sample: Array.from(capturedSquares).slice(0, 5)
+          });
+        }
+        updateMapCapturedState();
 
               // Load username
               if (data.username) {
@@ -257,6 +284,12 @@ export default function Home() {
         // Guest - Load from LocalStorage
         const localCaptured = JSON.parse(localStorage.getItem('capturedSquares') || '[]');
         capturedSetRef.current = new Set(localCaptured);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[capture] loaded from localStorage', {
+            count: localCaptured.length,
+            sample: localCaptured.slice(0, 5)
+          });
+        }
         updateMapCapturedState();
 
         // Load local filters

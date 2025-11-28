@@ -22,17 +22,36 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
   const pendingCapturedIds = useRef<string[]>([]);
   const gridLoadLogged = useRef(false);
   const pendingGridData = useRef<any | null>(null);
+  const capturedAppliedOnSource = useRef(false);
+  const capturedIdsRef = useRef<string[]>([]);
+  const gridDataRef = useRef<any | null>(null);
+
+  const applyCapturedToData = (data: any, capturedIds: string[]) => {
+    if (!data || !Array.isArray(data.features)) return data;
+    if (!capturedIds.length) return data;
+    const capturedSet = new Set(capturedIds);
+    return {
+      ...data,
+      features: data.features.map((f: any) => {
+        const props = { ...(f.properties || {}) };
+        props.captured = capturedSet.has(f.id);
+        return { ...f, properties: props };
+      })
+    };
+  };
 
   const logGridStatus = (tag: string) => {
     if (!map.current) return;
 
     let sourceFeatures: number | string = 'n/a';
+    let sourceFeaturesViaQuery: number | string = 'n/a';
     let sourceLoaded = false;
     let sampleFeatures: any = [];
     try {
       const source = map.current.getSource('grid') as any;
       sourceLoaded = map.current.isSourceLoaded('grid');
       sourceFeatures = source?._data?.features?.length ?? 'n/a';
+      sourceFeaturesViaQuery = map.current.querySourceFeatures('grid', { sourceLayer: undefined }).length;
       if (sourceLoaded) {
         const qs = map.current.querySourceFeatures('grid', { sourceLayer: undefined });
         sampleFeatures = qs.slice(0, 3).map(f => {
@@ -70,6 +89,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
       selectedDistricts,
       sourceLoaded,
       sourceFeatures,
+      sourceFeaturesViaQuery,
       renderedFeatures,
       styleLoaded: map.current.isStyleLoaded(),
       fillFilter: map.current.getFilter('grid-fill'),
@@ -77,48 +97,46 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
       sampleFeatures
     };
 
-    console.log('[grid] status:', summary);
-    console.log('[grid] debug:', `sourceLoaded=${sourceLoaded} sourceFeatures=${sourceFeatures} rendered=${renderedFeatures}`);
-    console.log('[grid] filters:', {
-      fill: summary.fillFilter,
-      outline: summary.outlineFilter
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[grid] status:', summary);
+      console.log('[grid] debug:', `sourceLoaded=${sourceLoaded} sourceFeatures=${sourceFeatures} rendered=${renderedFeatures}`);
+      console.log('[grid] filters:', {
+        fill: summary.fillFilter,
+        outline: summary.outlineFilter
+      });
+    }
   };
 
   useImperativeHandle(ref, () => ({
     refreshGrid: () => {
-      if (map.current && map.current.getSource('grid')) {
+      if (map.current && map.current.getSource('grid') && gridDataRef.current) {
         const source = map.current.getSource('grid') as maplibregl.GeoJSONSource;
-        // @ts-ignore - internal _data reference
-        const data = source._data;
-        if (data) {
-          source.setData(data);
-        }
+        source.setData(gridDataRef.current);
       }
     },
     updateGridData: (data: any) => {
       pendingGridData.current = data;
+      gridDataRef.current = data;
       if (map.current && map.current.getSource('grid')) {
         const source = map.current.getSource('grid') as maplibregl.GeoJSONSource;
-        source.setData(data);
+        const withCaptured = applyCapturedToData(data, capturedIdsRef.current);
+        source.setData(withCaptured);
         pendingGridData.current = null;
 
         // After loading grid data, apply any pending captured state
         if (pendingCapturedIds.current.length > 0) {
           console.log(`Applying ${pendingCapturedIds.current.length} pending captured squares after grid load`);
-
-          // Remove all feature states from grid source
-          map.current.removeFeatureState({ source: 'grid' });
-
-          // Set captured state for all pending IDs
-          pendingCapturedIds.current.forEach(id => {
-            map.current?.setFeatureState(
-              { source: 'grid', id },
-              { captured: true }
-            );
-          });
-
+          const merged = applyCapturedToData(withCaptured, pendingCapturedIds.current);
+          source.setData(merged);
+          capturedIdsRef.current = pendingCapturedIds.current;
           pendingCapturedIds.current = [];
+          capturedAppliedOnSource.current = true;
+          // Also set feature-state for visibility during interactions
+          pendingCapturedIds.current = [];
+          capturedIdsRef.current.forEach(id => {
+            map.current?.setFeatureState({ source: 'grid', id }, { captured: true });
+          });
+          logGridStatus('applied pending captured after grid load');
         }
       } else {
         console.warn('updateGridData: map or grid source not ready, storing data for later');
@@ -127,13 +145,24 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
     updateCapturedState: (capturedIds: string[]) => {
       if (!map.current || !map.current.getSource('grid')) {
         console.warn('updateCapturedState: map or grid source not ready, storing for later');
-        // Store for later when map is ready
         pendingCapturedIds.current = capturedIds;
+        capturedAppliedOnSource.current = false;
+        capturedIdsRef.current = capturedIds;
+        return;
+      }
+
+      const sourceLoaded = map.current.isSourceLoaded('grid');
+      if (!sourceLoaded) {
+        console.warn('updateCapturedState: grid source not yet loaded, storing IDs for later apply');
+        pendingCapturedIds.current = capturedIds;
+        capturedAppliedOnSource.current = false;
+        capturedIdsRef.current = capturedIds;
         return;
       }
 
       console.log(`updateCapturedState: Setting ${capturedIds.length} captured squares`);
       console.log('First 5 IDs:', capturedIds.slice(0, 5));
+      capturedIdsRef.current = capturedIds;
 
       // Check if features exist in the source
       const source = map.current.getSource('grid') as maplibregl.GeoJSONSource;
@@ -150,44 +179,14 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
         });
       }
 
-      // Remove all feature states from grid source
-      map.current.removeFeatureState({ source: 'grid' });
-
-      // Test: try to set state for first ID and check if it works
-      if (capturedIds.length > 0) {
-        const testId = capturedIds[0];
-        console.log(`Setting state for test ID (string id): ${testId}`);
-        map.current.setFeatureState(
-          { source: 'grid', id: testId },
-          { captured: true }
-        );
-
-        // Also try numeric ID if present
-        const numericId = Number(testId);
-        if (!Number.isNaN(numericId)) {
-          try {
-            map.current.setFeatureState(
-              { source: 'grid', id: numericId },
-              { captured: true }
-            );
-            console.log(`Also set state for numeric id: ${numericId}`);
-          } catch (err) {
-            console.warn('Numeric id setFeatureState failed', err);
-          }
-        }
-
-        // Check if it was set
-        const state = map.current.getFeatureState({ source: 'grid', id: testId });
-        console.log(`Test feature state for ${testId}:`, state);
-
-        // Try to find this feature in the source (either top-level id or properties.id)
-        if (sourceData && sourceData.features) {
-          const foundFeature = sourceData.features.find((f: any) => f.id === testId || f.properties?.id === testId);
-          console.log(`Feature ${testId} found in source:`, !!foundFeature);
-        }
+      // Update underlying data with captured flag for reliable styling
+      if (gridDataRef.current) {
+        const merged = applyCapturedToData(gridDataRef.current, capturedIds);
+        gridDataRef.current = merged;
+        source.setData(merged);
       }
 
-      // Set all captured states
+      // Set feature-state as well for consistency
       capturedIds.forEach(id => {
         map.current?.setFeatureState(
           { source: 'grid', id },
@@ -199,7 +198,8 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
       map.current.triggerRepaint();
       logGridStatus('after setting captured states');
 
-      // Clear pending since we just applied them
+      // Track that we applied states on the loaded source
+      capturedAppliedOnSource.current = true;
       pendingCapturedIds.current = [];
     },
     updateRecordingRoute: (points: { lat: number; lon: number }[]) => {
@@ -297,14 +297,27 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
       // Add GeoJSON source for grid squares (data provided externally)
       map.current.addSource('grid', {
         type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
-        promoteId: 'id'
+        data: { type: 'FeatureCollection', features: [] }
       });
 
       map.current.on('sourcedata', (e) => {
         if (e.sourceId === 'grid' && map.current?.isSourceLoaded('grid') && !gridLoadLogged.current) {
           gridLoadLogged.current = true;
           logGridStatus('grid source loaded');
+        }
+        // If source is loaded and we still have pending captured states, apply them now
+        if (e.sourceId === 'grid' && map.current?.isSourceLoaded('grid') && pendingCapturedIds.current.length > 0 && !capturedAppliedOnSource.current) {
+          console.log(`[grid] sourcedata apply pending captured (${pendingCapturedIds.current.length})`);
+          if (gridDataRef.current) {
+            const merged = applyCapturedToData(gridDataRef.current, pendingCapturedIds.current);
+            gridDataRef.current = merged;
+            (map.current.getSource('grid') as maplibregl.GeoJSONSource).setData(merged);
+          }
+          pendingCapturedIds.current.forEach(id => {
+            map.current?.setFeatureState({ source: 'grid', id }, { captured: true });
+          });
+          capturedAppliedOnSource.current = true;
+          logGridStatus('applied pending captured on sourcedata');
         }
       });
 
@@ -317,13 +330,19 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
         paint: {
           'fill-color': [
             'case',
-            ['coalesce', ['feature-state', 'captured'], false],
+            ['any',
+              ['==', ['get', 'captured'], true],
+              ['coalesce', ['feature-state', 'captured'], false]
+            ],
             '#00ff00', // Captured: Green
             '#ff0000'  // Uncaptured: Red
           ],
           'fill-opacity': [
             'case',
-            ['coalesce', ['feature-state', 'captured'], false],
+            ['any',
+              ['==', ['get', 'captured'], true],
+              ['coalesce', ['feature-state', 'captured'], false]
+            ],
             0.4, // Captured: more visible
             0.15 // Uncaptured: faint
           ]
@@ -338,7 +357,10 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
         paint: {
           'line-color': [
             'case',
-            ['coalesce', ['feature-state', 'captured'], false],
+            ['any',
+              ['==', ['get', 'captured'], true],
+              ['coalesce', ['feature-state', 'captured'], false]
+            ],
             '#00cc00', // Captured: Darker Green
             '#ff0000'  // Uncaptured: Red
           ],
@@ -378,6 +400,14 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
 
       console.log('All layers loaded successfully');
 
+      // Apply pending grid data if it arrived before map load
+      if (pendingGridData.current) {
+        const source = map.current.getSource('grid') as maplibregl.GeoJSONSource;
+        source.setData(pendingGridData.current);
+        pendingGridData.current = null;
+        logGridStatus('applied pending grid data after load');
+      }
+
       // Apply any pending captured state that was set before map was ready
       if (pendingCapturedIds.current.length > 0) {
         console.log(`Applying ${pendingCapturedIds.current.length} pending captured squares`);
@@ -394,15 +424,8 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
         });
 
         pendingCapturedIds.current = [];
+        capturedAppliedOnSource.current = true;
         logGridStatus('applied pending captured after load');
-      }
-
-      // Apply pending grid data if it arrived before map load
-      if (pendingGridData.current) {
-        const source = map.current.getSource('grid') as maplibregl.GeoJSONSource;
-        source.setData(pendingGridData.current);
-        pendingGridData.current = null;
-        logGridStatus('applied pending grid data after load');
       }
     });
 
