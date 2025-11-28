@@ -10,6 +10,7 @@ import { DOMParser } from "xmldom";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, onSnapshot } from "firebase/firestore";
+import type { Feature, Polygon } from "geojson";
 import AuthModal from "@/components/auth-modal";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -74,7 +75,7 @@ export default function Home() {
 
   // Refs for data storage (performance optimization)
   const gridIndexRef = useRef<Flatbush | null>(null);
-  const gridFeaturesRef = useRef<GeoJSON.Feature[]>([]);
+  const gridFeaturesRef = useRef<Feature<Polygon>[]>([]);
   const capturedSetRef = useRef<Set<string>>(new Set());
 
   // Auth State
@@ -183,7 +184,7 @@ export default function Home() {
         return;
       }
 
-      const allFeatures: GeoJSON.Feature[] = [];
+      const allFeatures: Feature<Polygon>[] = [];
 
       try {
         const promises = selectedDistricts.map(async (districtName) => {
@@ -194,7 +195,7 @@ export default function Home() {
             const res = await fetch(`/grid-${districtId}.geojson`);
             if (!res.ok) throw new Error(`Failed to load ${districtId}`);
             const data = await res.json();
-            return data.features;
+            return (data.features || []) as Feature<Polygon>[];
           } catch (e) {
             console.error(`Error loading grid for ${districtName}:`, e);
             return [];
@@ -218,26 +219,29 @@ export default function Home() {
 
         // Build Spatial Index (Flatbush)
         // Initialize with number of items
-        const index = new Flatbush(allFeatures.length);
+        if (allFeatures.length > 0) {
+          const index = new Flatbush(allFeatures.length);
 
-        allFeatures.forEach(f => {
-          // Calculate bbox from geometry (Polygon ring 0)
-          // Coordinates are [ [ [lon, lat], ... ] ]
-          const coords = f.geometry.coordinates[0];
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          allFeatures.forEach(f => {
+            if (!f.geometry || f.geometry.type !== 'Polygon') return;
+            const coords = f.geometry.coordinates[0];
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
-          for (const p of coords) {
-            if (p[0] < minX) minX = p[0];
-            if (p[1] < minY) minY = p[1];
-            if (p[0] > maxX) maxX = p[0];
-            if (p[1] > maxY) maxY = p[1];
-          }
+            for (const p of coords) {
+              if (p[0] < minX) minX = p[0];
+              if (p[1] < minY) minY = p[1];
+              if (p[0] > maxX) maxX = p[0];
+              if (p[1] > maxY) maxY = p[1];
+            }
 
-          index.add(minX, minY, maxX, maxY);
-        });
+            index.add(minX, minY, maxX, maxY);
+          });
 
-        index.finish();
-        gridIndexRef.current = index;
+          index.finish();
+          gridIndexRef.current = index;
+        } else {
+          gridIndexRef.current = null;
+        }
 
         // Update Map
         const combinedData = {
