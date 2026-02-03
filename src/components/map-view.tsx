@@ -169,6 +169,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(({ selectedRoadTypes = [], 
       if (gridDataRef.current) {
         const merged = applyCapturedToData(gridDataRef.current, capturedIds);
         gridDataRef.current = merged;
+        const source = map.current.getSource('grid') as maplibregl.GeoJSONSource;
         source.setData(merged);
       }
 
