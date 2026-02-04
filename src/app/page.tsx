@@ -57,6 +57,7 @@ const DISTRICTS = [
   { id: 'strzyza', name: 'Strzyża' },
   { id: 'piecki_migowo', name: 'Piecki-Migowo' },
   { id: 'wrzeszcz_gorny', name: 'Wrzeszcz Górny' },
+  { id: 'sopot', name: 'Sopot' },
 ];
 
 export default function Home() {
