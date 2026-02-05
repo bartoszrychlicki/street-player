@@ -29,6 +29,10 @@ function buildOverpassQuery(bbox) {
   way["highway"="service"](${bbox[1]},${bbox[0]},${bbox[3]},${bbox[2]});
   way["highway"="unclassified"](${bbox[1]},${bbox[0]},${bbox[3]},${bbox[2]});
   way["highway"="residential"](${bbox[1]},${bbox[0]},${bbox[3]},${bbox[2]});
+  way["highway"="tertiary"](${bbox[1]},${bbox[0]},${bbox[3]},${bbox[2]});
+  way["highway"="secondary"](${bbox[1]},${bbox[0]},${bbox[3]},${bbox[2]});
+  way["highway"="primary"](${bbox[1]},${bbox[0]},${bbox[3]},${bbox[2]});
+  way["highway"="living_street"](${bbox[1]},${bbox[0]},${bbox[3]},${bbox[2]});
 );
 out geom;
 `;

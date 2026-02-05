@@ -49,6 +49,10 @@ const ROAD_TYPES = [
   { id: 'service', label: 'Droga serwisowa', description: 'Drogi dojazdowe' },
   { id: 'unclassified', label: 'Nieklasyfikowana', description: 'Drogi pomniejsze' },
   { id: 'residential', label: 'Osiedlowa', description: 'Ulice osiedlowe' },
+  { id: 'tertiary', label: 'Lokalna', description: 'Ulice lokalne łączące' },
+  { id: 'secondary', label: 'Drugorzędna', description: 'Drogi drugiego rzędu' },
+  { id: 'primary', label: 'Główna', description: 'Drogi główne' },
+  { id: 'living_street', label: 'Strefa zamieszkania', description: 'Strefy tempo 20' },
 ];
 
 const DISTRICTS = [
