@@ -1,0 +1,806 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		07A21D3AB50DCD2E16AE6FB0 /* grid-strzyza.geojson in Resources */ = {isa = PBXBuildFile; fileRef = A4D6DF05F22648D52DF909BF /* grid-strzyza.geojson */; };
+		0B0D47B869756BD9F3CC632E /* grid-vii_dwor.geojson in Resources */ = {isa = PBXBuildFile; fileRef = 6ADAD18F21432634EE1E63EF /* grid-vii_dwor.geojson */; };
+		1B62ADCCA4E4ABFF75F26304 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B29E27F78F54A265F843E06A /* LaunchScreen.storyboard */; };
+		2F9558EF1D568CC12A2EBDEE /* SettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8121FD5FC6224E4DE162583A /* SettingsSheet.swift */; };
+		3727B616A6CBADA1B27C7899 /* LiveActivityController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90BC1DDEDDFC08A5BEC1F36C /* LiveActivityController.swift */; };
+		38923A66A943B34684E0B224 /* WalkActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBB995BA3D90720E3B51B155 /* WalkActivityAttributes.swift */; };
+		4D26E43465A2E046897D49E6 /* MapScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CA6DC749EDA31734EFDE8BD /* MapScreen.swift */; };
+		4DB55C2C83272D16B4F65F4E /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 18FE5B239596058B4E35EF9C /* GoogleSignInSwift */; };
+		4FE6E23628A3AF2D61634EA0 /* StreetPlayerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FCA2B86058D86EBAF6998D /* StreetPlayerModels.swift */; };
+		55206314887C5961C42CF26E /* MapLibre in Frameworks */ = {isa = PBXBuildFile; productRef = AD733CF18719CE04CF855BA5 /* MapLibre */; };
+		5A44378E416CBB79540618FA /* StreetMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6093AE49759AF74BC0509AB /* StreetMapView.swift */; };
+		66B21EE5324B28EE263A6214 /* HistorySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF0D51599A31839A0E0DBF7 /* HistorySheet.swift */; };
+		6B964B34F48DB861AC9548EA /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 595505FED74BEE1FE81CD6E8 /* APIClient.swift */; };
+		6DB39425D6B6E4135D448EAE /* RecordingCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C460A4E4DB8FC56E362CDCA9 /* RecordingCard.swift */; };
+		8A7EC8189D3061A221661BFC /* GoogleService-Info.example.plist in Resources */ = {isa = PBXBuildFile; fileRef = 1A90978A21022C9C8271EE86 /* GoogleService-Info.example.plist */; };
+		8CC6C3E18851872BBF274D93 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 6F9209902DAFC270037511B1 /* FirebaseAuth */; };
+		907A13EDE8F2A2F426937133 /* grid-sopot.geojson in Resources */ = {isa = PBXBuildFile; fileRef = DCA52220C4C314DC35215840 /* grid-sopot.geojson */; };
+		9ADCBA16A18A33F519F97F29 /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C49EE064173ABCB6889A8A2 /* AuthViewModel.swift */; };
+		9B453E96D29D208EF2592CF0 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18F61D9A38F560813CB4ACEC /* LoginView.swift */; };
+		9C32D76ACDD6DDB739B3BAE5 /* StreetPlayerWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D0669C17B076125E09936893 /* StreetPlayerWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A19E47A0BA58D7A7F92C8B8C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4BF381BD9CA875F1EDDAFE37 /* GoogleService-Info.plist */; };
+		B044258DEC37D99C9B6A39EA /* WalkActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBB995BA3D90720E3B51B155 /* WalkActivityAttributes.swift */; };
+		B5836F1753D78D941BBE97F9 /* grid-wrzeszcz_gorny.geojson in Resources */ = {isa = PBXBuildFile; fileRef = C6AF01F2B1FD4214850E463E /* grid-wrzeszcz_gorny.geojson */; };
+		C2D639433447AB40989DE5F4 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 5FF99CDB930C6B84666A89BD /* GoogleSignIn */; };
+		C34373DD44A8CBE5A5DE4869 /* LocalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECBDAFE9A648F5212E2F47E1 /* LocalStore.swift */; };
+		CFFE461B10B5EBC4F3A6C3F0 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 255FFB1680964C3B41E72D1D /* AppDelegate.swift */; };
+		D0F8BEFFFE5CC636BB41FB5E /* grid-piecki_migowo.geojson in Resources */ = {isa = PBXBuildFile; fileRef = 3F4390A8EBF7430602311009 /* grid-piecki_migowo.geojson */; };
+		D748ACF2E34B63EE0F6CA243 /* WalkLiveActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80FC3471CCFD0AA18A4C24BD /* WalkLiveActivityBundle.swift */; };
+		DB7515043974DFF819A58BE1 /* StreetPlayerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1D419CEFF6F84FD9950A3F /* StreetPlayerApp.swift */; };
+		DDDA58B3C43E805E1DE3C110 /* StreetPlayerUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2C1EBF5FEA138A19B5B5CD9 /* StreetPlayerUITests.swift */; };
+		DE9CF4B82B512EC9E005D012 /* grid-oliwa.geojson in Resources */ = {isa = PBXBuildFile; fileRef = 73F6BD3BE06A838C43D142C1 /* grid-oliwa.geojson */; };
+		E58829F67A1B51A98426E6AD /* GridCaptureEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF1A45B2CBB26EA680F37D8D /* GridCaptureEstimator.swift */; };
+		E7DA037B2645B06288C94DFE /* LocationRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA335712E1539CCCF878E8EF /* LocationRecorder.swift */; };
+		F556E3075EF49C653C480C6D /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 28F1BACA999C200AB7C75BFC /* FirebaseCore */; };
+		FCDBA715A5D47721FA81F646 /* osm-raster-style.json in Resources */ = {isa = PBXBuildFile; fileRef = 734E8187E517C0918CCEFFA4 /* osm-raster-style.json */; };
+		FFF2F357B1FE4A5D261C00CB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87408F93F37B76110D4CF1FF /* ContentView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		DB0CBCF8A8EB21D7D238FDC6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1AB627D6F53BE9E9D9632219 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A69431E4BE0DF2C61EC35FE2;
+			remoteInfo = StreetPlayer;
+		};
+		FC41BEAEC6C97966B6B39927 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1AB627D6F53BE9E9D9632219 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 90AE817D30CC159F9F11AD36;
+			remoteInfo = StreetPlayerWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4EDE5C9AB1D12A04B8E206CE /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				9C32D76ACDD6DDB739B3BAE5 /* StreetPlayerWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0A1D419CEFF6F84FD9950A3F /* StreetPlayerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreetPlayerApp.swift; sourceTree = "<group>"; };
+		0CA6DC749EDA31734EFDE8BD /* MapScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapScreen.swift; sourceTree = "<group>"; };
+		18F61D9A38F560813CB4ACEC /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		1A90978A21022C9C8271EE86 /* GoogleService-Info.example.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.example.plist"; sourceTree = "<group>"; };
+		255FFB1680964C3B41E72D1D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		2C49EE064173ABCB6889A8A2 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
+		2E02EB0D1297912ABD760834 /* StreetPlayerUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = StreetPlayerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3F4390A8EBF7430602311009 /* grid-piecki_migowo.geojson */ = {isa = PBXFileReference; path = "grid-piecki_migowo.geojson"; sourceTree = "<group>"; };
+		4BF381BD9CA875F1EDDAFE37 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		55FCA2B86058D86EBAF6998D /* StreetPlayerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreetPlayerModels.swift; sourceTree = "<group>"; };
+		56C086E99DDE6051984B9141 /* StreetPlayer.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = StreetPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		595505FED74BEE1FE81CD6E8 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		6ADAD18F21432634EE1E63EF /* grid-vii_dwor.geojson */ = {isa = PBXFileReference; path = "grid-vii_dwor.geojson"; sourceTree = "<group>"; };
+		734E8187E517C0918CCEFFA4 /* osm-raster-style.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "osm-raster-style.json"; sourceTree = "<group>"; };
+		73F6BD3BE06A838C43D142C1 /* grid-oliwa.geojson */ = {isa = PBXFileReference; path = "grid-oliwa.geojson"; sourceTree = "<group>"; };
+		80FC3471CCFD0AA18A4C24BD /* WalkLiveActivityBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkLiveActivityBundle.swift; sourceTree = "<group>"; };
+		8121FD5FC6224E4DE162583A /* SettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheet.swift; sourceTree = "<group>"; };
+		859CAA1283EF6519BA634DDE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		87408F93F37B76110D4CF1FF /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		8BE06E6FA9146E16232089F6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		90BC1DDEDDFC08A5BEC1F36C /* LiveActivityController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityController.swift; sourceTree = "<group>"; };
+		939EA615C510C65423063414 /* StreetPlayer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StreetPlayer.entitlements; sourceTree = "<group>"; };
+		A4D6DF05F22648D52DF909BF /* grid-strzyza.geojson */ = {isa = PBXFileReference; path = "grid-strzyza.geojson"; sourceTree = "<group>"; };
+		AEF0D51599A31839A0E0DBF7 /* HistorySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistorySheet.swift; sourceTree = "<group>"; };
+		B29E27F78F54A265F843E06A /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		C460A4E4DB8FC56E362CDCA9 /* RecordingCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingCard.swift; sourceTree = "<group>"; };
+		C6AF01F2B1FD4214850E463E /* grid-wrzeszcz_gorny.geojson */ = {isa = PBXFileReference; path = "grid-wrzeszcz_gorny.geojson"; sourceTree = "<group>"; };
+		CA335712E1539CCCF878E8EF /* LocationRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationRecorder.swift; sourceTree = "<group>"; };
+		D0669C17B076125E09936893 /* StreetPlayerWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = StreetPlayerWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		DCA52220C4C314DC35215840 /* grid-sopot.geojson */ = {isa = PBXFileReference; path = "grid-sopot.geojson"; sourceTree = "<group>"; };
+		E2C1EBF5FEA138A19B5B5CD9 /* StreetPlayerUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreetPlayerUITests.swift; sourceTree = "<group>"; };
+		ECBDAFE9A648F5212E2F47E1 /* LocalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalStore.swift; sourceTree = "<group>"; };
+		EF1A45B2CBB26EA680F37D8D /* GridCaptureEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridCaptureEstimator.swift; sourceTree = "<group>"; };
+		F6093AE49759AF74BC0509AB /* StreetMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreetMapView.swift; sourceTree = "<group>"; };
+		FBB995BA3D90720E3B51B155 /* WalkActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkActivityAttributes.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		9D1BD3F2AA639F65ECABEF2B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8CC6C3E18851872BBF274D93 /* FirebaseAuth in Frameworks */,
+				F556E3075EF49C653C480C6D /* FirebaseCore in Frameworks */,
+				C2D639433447AB40989DE5F4 /* GoogleSignIn in Frameworks */,
+				4DB55C2C83272D16B4F65F4E /* GoogleSignInSwift in Frameworks */,
+				55206314887C5961C42CF26E /* MapLibre in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		148D17E0C0BAE318DD5BDE24 /* LiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				90BC1DDEDDFC08A5BEC1F36C /* LiveActivityController.swift */,
+				FBB995BA3D90720E3B51B155 /* WalkActivityAttributes.swift */,
+			);
+			path = LiveActivity;
+			sourceTree = "<group>";
+		};
+		16EB45352F37F2F509EEBAD1 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				595505FED74BEE1FE81CD6E8 /* APIClient.swift */,
+			);
+			path = Networking;
+			sourceTree = "<group>";
+		};
+		1B5682242B0B55BEAD93BA60 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				255FFB1680964C3B41E72D1D /* AppDelegate.swift */,
+				859CAA1283EF6519BA634DDE /* Info.plist */,
+				B29E27F78F54A265F843E06A /* LaunchScreen.storyboard */,
+				939EA615C510C65423063414 /* StreetPlayer.entitlements */,
+				0A1D419CEFF6F84FD9950A3F /* StreetPlayerApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		1DC70F8B933B7E3FE73DA153 = {
+			isa = PBXGroup;
+			children = (
+				85FB4148AA6CD06991FBCB8E /* StreetPlayer */,
+				BE89867512591487DF46419E /* StreetPlayerUITests */,
+				C0132DB85FF6BFAA48137A69 /* StreetPlayerWidgets */,
+				8207E98B0009A14D11E55FB6 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		27214E18BA3853A199216F84 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				1A90978A21022C9C8271EE86 /* GoogleService-Info.example.plist */,
+				4BF381BD9CA875F1EDDAFE37 /* GoogleService-Info.plist */,
+				73F6BD3BE06A838C43D142C1 /* grid-oliwa.geojson */,
+				3F4390A8EBF7430602311009 /* grid-piecki_migowo.geojson */,
+				DCA52220C4C314DC35215840 /* grid-sopot.geojson */,
+				A4D6DF05F22648D52DF909BF /* grid-strzyza.geojson */,
+				6ADAD18F21432634EE1E63EF /* grid-vii_dwor.geojson */,
+				C6AF01F2B1FD4214850E463E /* grid-wrzeszcz_gorny.geojson */,
+				734E8187E517C0918CCEFFA4 /* osm-raster-style.json */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		32218D553270A2B37412BF8E /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				ECBDAFE9A648F5212E2F47E1 /* LocalStore.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		8207E98B0009A14D11E55FB6 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				56C086E99DDE6051984B9141 /* StreetPlayer.app */,
+				2E02EB0D1297912ABD760834 /* StreetPlayerUITests.xctest */,
+				D0669C17B076125E09936893 /* StreetPlayerWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		85FB4148AA6CD06991FBCB8E /* StreetPlayer */ = {
+			isa = PBXGroup;
+			children = (
+				1B5682242B0B55BEAD93BA60 /* App */,
+				D18D8D46EEDB8DDF4DAA630D /* Auth */,
+				148D17E0C0BAE318DD5BDE24 /* LiveActivity */,
+				F0FB7B2DBC157DD9DCFCEFD2 /* Location */,
+				FB0FBC36D231270885D54A87 /* Map */,
+				D54C03D23C5EA849153F3EAA /* Models */,
+				16EB45352F37F2F509EEBAD1 /* Networking */,
+				32218D553270A2B37412BF8E /* Persistence */,
+				27214E18BA3853A199216F84 /* Resources */,
+				CC05411226CF0C39AFFAF5D0 /* Views */,
+			);
+			path = StreetPlayer;
+			sourceTree = "<group>";
+		};
+		BE89867512591487DF46419E /* StreetPlayerUITests */ = {
+			isa = PBXGroup;
+			children = (
+				E2C1EBF5FEA138A19B5B5CD9 /* StreetPlayerUITests.swift */,
+			);
+			path = StreetPlayerUITests;
+			sourceTree = "<group>";
+		};
+		C0132DB85FF6BFAA48137A69 /* StreetPlayerWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				8BE06E6FA9146E16232089F6 /* Info.plist */,
+				80FC3471CCFD0AA18A4C24BD /* WalkLiveActivityBundle.swift */,
+			);
+			path = StreetPlayerWidgets;
+			sourceTree = "<group>";
+		};
+		CC05411226CF0C39AFFAF5D0 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				87408F93F37B76110D4CF1FF /* ContentView.swift */,
+				AEF0D51599A31839A0E0DBF7 /* HistorySheet.swift */,
+				18F61D9A38F560813CB4ACEC /* LoginView.swift */,
+				0CA6DC749EDA31734EFDE8BD /* MapScreen.swift */,
+				C460A4E4DB8FC56E362CDCA9 /* RecordingCard.swift */,
+				8121FD5FC6224E4DE162583A /* SettingsSheet.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		D18D8D46EEDB8DDF4DAA630D /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				2C49EE064173ABCB6889A8A2 /* AuthViewModel.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		D54C03D23C5EA849153F3EAA /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				55FCA2B86058D86EBAF6998D /* StreetPlayerModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		F0FB7B2DBC157DD9DCFCEFD2 /* Location */ = {
+			isa = PBXGroup;
+			children = (
+				CA335712E1539CCCF878E8EF /* LocationRecorder.swift */,
+			);
+			path = Location;
+			sourceTree = "<group>";
+		};
+		FB0FBC36D231270885D54A87 /* Map */ = {
+			isa = PBXGroup;
+			children = (
+				EF1A45B2CBB26EA680F37D8D /* GridCaptureEstimator.swift */,
+				F6093AE49759AF74BC0509AB /* StreetMapView.swift */,
+			);
+			path = Map;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		90AE817D30CC159F9F11AD36 /* StreetPlayerWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C0C3EDF16A3530A2AC046C23 /* Build configuration list for PBXNativeTarget "StreetPlayerWidgets" */;
+			buildPhases = (
+				A2CBAFC9F0495BB04B68E461 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StreetPlayerWidgets;
+			packageProductDependencies = (
+			);
+			productName = StreetPlayerWidgets;
+			productReference = D0669C17B076125E09936893 /* StreetPlayerWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		A69431E4BE0DF2C61EC35FE2 /* StreetPlayer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 51E2E3A098DA07E140D6DCC3 /* Build configuration list for PBXNativeTarget "StreetPlayer" */;
+			buildPhases = (
+				AE98D07F1D09604521CEC314 /* Sources */,
+				EA259BCEFF8ACA6B82C2B242 /* Resources */,
+				9D1BD3F2AA639F65ECABEF2B /* Frameworks */,
+				4EDE5C9AB1D12A04B8E206CE /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4CFA1DA1E262217B57BDD675 /* PBXTargetDependency */,
+			);
+			name = StreetPlayer;
+			packageProductDependencies = (
+				6F9209902DAFC270037511B1 /* FirebaseAuth */,
+				28F1BACA999C200AB7C75BFC /* FirebaseCore */,
+				5FF99CDB930C6B84666A89BD /* GoogleSignIn */,
+				18FE5B239596058B4E35EF9C /* GoogleSignInSwift */,
+				AD733CF18719CE04CF855BA5 /* MapLibre */,
+			);
+			productName = StreetPlayer;
+			productReference = 56C086E99DDE6051984B9141 /* StreetPlayer.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B1AD3F35A63E68AAA4BD05B5 /* StreetPlayerUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3A34E51D41FE580A166852D0 /* Build configuration list for PBXNativeTarget "StreetPlayerUITests" */;
+			buildPhases = (
+				A4C034310F5669493171E8C8 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2E8A4680B6E27C3FEF6FD2B8 /* PBXTargetDependency */,
+			);
+			name = StreetPlayerUITests;
+			packageProductDependencies = (
+			);
+			productName = StreetPlayerUITests;
+			productReference = 2E02EB0D1297912ABD760834 /* StreetPlayerUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1AB627D6F53BE9E9D9632219 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					B1AD3F35A63E68AAA4BD05B5 = {
+						TestTargetID = A69431E4BE0DF2C61EC35FE2;
+					};
+				};
+			};
+			buildConfigurationList = 467AD48035EB822BAE112AB9 /* Build configuration list for PBXProject "StreetPlayer" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 1DC70F8B933B7E3FE73DA153;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				947504BD7D99AE975B737A66 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				A5A0CE558351DC77DD4C2375 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				EF5BCF80D2187FC6FC9E2569 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 8207E98B0009A14D11E55FB6 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A69431E4BE0DF2C61EC35FE2 /* StreetPlayer */,
+				B1AD3F35A63E68AAA4BD05B5 /* StreetPlayerUITests */,
+				90AE817D30CC159F9F11AD36 /* StreetPlayerWidgets */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		EA259BCEFF8ACA6B82C2B242 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8A7EC8189D3061A221661BFC /* GoogleService-Info.example.plist in Resources */,
+				A19E47A0BA58D7A7F92C8B8C /* GoogleService-Info.plist in Resources */,
+				1B62ADCCA4E4ABFF75F26304 /* LaunchScreen.storyboard in Resources */,
+				DE9CF4B82B512EC9E005D012 /* grid-oliwa.geojson in Resources */,
+				D0F8BEFFFE5CC636BB41FB5E /* grid-piecki_migowo.geojson in Resources */,
+				907A13EDE8F2A2F426937133 /* grid-sopot.geojson in Resources */,
+				07A21D3AB50DCD2E16AE6FB0 /* grid-strzyza.geojson in Resources */,
+				0B0D47B869756BD9F3CC632E /* grid-vii_dwor.geojson in Resources */,
+				B5836F1753D78D941BBE97F9 /* grid-wrzeszcz_gorny.geojson in Resources */,
+				FCDBA715A5D47721FA81F646 /* osm-raster-style.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A2CBAFC9F0495BB04B68E461 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				38923A66A943B34684E0B224 /* WalkActivityAttributes.swift in Sources */,
+				D748ACF2E34B63EE0F6CA243 /* WalkLiveActivityBundle.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A4C034310F5669493171E8C8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DDDA58B3C43E805E1DE3C110 /* StreetPlayerUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AE98D07F1D09604521CEC314 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6B964B34F48DB861AC9548EA /* APIClient.swift in Sources */,
+				CFFE461B10B5EBC4F3A6C3F0 /* AppDelegate.swift in Sources */,
+				9ADCBA16A18A33F519F97F29 /* AuthViewModel.swift in Sources */,
+				FFF2F357B1FE4A5D261C00CB /* ContentView.swift in Sources */,
+				E58829F67A1B51A98426E6AD /* GridCaptureEstimator.swift in Sources */,
+				66B21EE5324B28EE263A6214 /* HistorySheet.swift in Sources */,
+				3727B616A6CBADA1B27C7899 /* LiveActivityController.swift in Sources */,
+				C34373DD44A8CBE5A5DE4869 /* LocalStore.swift in Sources */,
+				E7DA037B2645B06288C94DFE /* LocationRecorder.swift in Sources */,
+				9B453E96D29D208EF2592CF0 /* LoginView.swift in Sources */,
+				4D26E43465A2E046897D49E6 /* MapScreen.swift in Sources */,
+				6DB39425D6B6E4135D448EAE /* RecordingCard.swift in Sources */,
+				2F9558EF1D568CC12A2EBDEE /* SettingsSheet.swift in Sources */,
+				5A44378E416CBB79540618FA /* StreetMapView.swift in Sources */,
+				DB7515043974DFF819A58BE1 /* StreetPlayerApp.swift in Sources */,
+				4FE6E23628A3AF2D61634EA0 /* StreetPlayerModels.swift in Sources */,
+				B044258DEC37D99C9B6A39EA /* WalkActivityAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		2E8A4680B6E27C3FEF6FD2B8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A69431E4BE0DF2C61EC35FE2 /* StreetPlayer */;
+			targetProxy = DB0CBCF8A8EB21D7D238FDC6 /* PBXContainerItemProxy */;
+		};
+		4CFA1DA1E262217B57BDD675 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 90AE817D30CC159F9F11AD36 /* StreetPlayerWidgets */;
+			targetProxy = FC41BEAEC6C97966B6B39927 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1085B57824F2CB11D91325CA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = StreetPlayer/App/StreetPlayer.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				INFOPLIST_FILE = StreetPlayer/App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bartoszrychlicki.streetplayer;
+				PRODUCT_NAME = "Street Player";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.1;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		3EE21DBC7B2E2110FADEA839 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		466233033D3EAA76CCDDAA52 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bartoszrychlicki.streetplayer.uitests;
+				PRODUCT_NAME = "Street Player UI Tests";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.1;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = StreetPlayer;
+			};
+			name = Debug;
+		};
+		4DA21DEFC020D867ABA30822 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = StreetPlayerWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bartoszrychlicki.streetplayer.widgets;
+				PRODUCT_NAME = "Street Player Widgets";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.1;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		6D22F94404C96227432B931D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		77910D95D1BD0870751C694F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = StreetPlayer/App/StreetPlayer.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				INFOPLIST_FILE = StreetPlayer/App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bartoszrychlicki.streetplayer;
+				PRODUCT_NAME = "Street Player";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.1;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		D39067D017D41EF04075F249 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = StreetPlayerWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bartoszrychlicki.streetplayer.widgets;
+				PRODUCT_NAME = "Street Player Widgets";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.1;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DA483E7869DD44846E14CFC5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bartoszrychlicki.streetplayer.uitests;
+				PRODUCT_NAME = "Street Player UI Tests";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.1;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = StreetPlayer;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3A34E51D41FE580A166852D0 /* Build configuration list for PBXNativeTarget "StreetPlayerUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				466233033D3EAA76CCDDAA52 /* Debug */,
+				DA483E7869DD44846E14CFC5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		467AD48035EB822BAE112AB9 /* Build configuration list for PBXProject "StreetPlayer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6D22F94404C96227432B931D /* Debug */,
+				3EE21DBC7B2E2110FADEA839 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		51E2E3A098DA07E140D6DCC3 /* Build configuration list for PBXNativeTarget "StreetPlayer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1085B57824F2CB11D91325CA /* Debug */,
+				77910D95D1BD0870751C694F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C0C3EDF16A3530A2AC046C23 /* Build configuration list for PBXNativeTarget "StreetPlayerWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D39067D017D41EF04075F249 /* Debug */,
+				4DA21DEFC020D867ABA30822 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		947504BD7D99AE975B737A66 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+		A5A0CE558351DC77DD4C2375 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
+		EF5BCF80D2187FC6FC9E2569 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/maplibre/maplibre-gl-native-distribution.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		18FE5B239596058B4E35EF9C /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A5A0CE558351DC77DD4C2375 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+		28F1BACA999C200AB7C75BFC /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 947504BD7D99AE975B737A66 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		5FF99CDB930C6B84666A89BD /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A5A0CE558351DC77DD4C2375 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		6F9209902DAFC270037511B1 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 947504BD7D99AE975B737A66 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		AD733CF18719CE04CF855BA5 /* MapLibre */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EF5BCF80D2187FC6FC9E2569 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */;
+			productName = MapLibre;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 1AB627D6F53BE9E9D9632219 /* Project object */;
+}

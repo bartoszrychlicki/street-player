@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CLIENT_ID</key>
+  <string>replace-with-ios-client-id.apps.googleusercontent.com</string>
+  <key>REVERSED_CLIENT_ID</key>
+  <string>com.googleusercontent.apps.replace-with-ios-client-id</string>
+  <key>API_KEY</key>
+  <string>replace-with-firebase-api-key</string>
+  <key>GCM_SENDER_ID</key>
+  <string>replace-with-sender-id</string>
+  <key>PLIST_VERSION</key>
+  <string>1</string>
+  <key>BUNDLE_ID</key>
+  <string>com.bartoszrychlicki.streetplayer</string>
+  <key>PROJECT_ID</key>
+  <string>street-player-8f78f</string>
+  <key>STORAGE_BUCKET</key>
+  <string>street-player-8f78f.appspot.com</string>
+  <key>GOOGLE_APP_ID</key>
+  <string>replace-with-google-app-id</string>
+</dict>
+</plist>

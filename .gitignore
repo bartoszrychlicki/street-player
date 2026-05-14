@@ -23,6 +23,14 @@
 # misc
 .DS_Store
 *.pem
+ios/StreetPlayer/.xcode-packages/
+ios/StreetPlayer/build-xcode.log
+ios/StreetPlayer/build-run.log
+ios/StreetPlayer/*.log
+ios/StreetPlayer/StreetPlayer *.xcodeproj/
+ios/StreetPlayer/**/*.xcuserstate
+ios/StreetPlayer/**/xcuserdata/
+ios/StreetPlayer/build/
 
 # debug
 npm-debug.log*
@@ -32,6 +40,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+ios/StreetPlayer/StreetPlayer/Resources/GoogleService-Info.plist
 
 # vercel
 .vercel
@@ -39,3 +48,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.env*.local

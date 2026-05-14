@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "ios/StreetPlayer/.xcode-packages/**",
+    "ios/StreetPlayer/build-xcode.log",
+    "ios/StreetPlayer/build-run.log",
+    "ios/StreetPlayer/*.log",
+    "ios/StreetPlayer/build/**",
   ]),
 ]);
 
