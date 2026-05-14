@@ -31,7 +31,7 @@ targets:
         CFBundleURLTypes:
           - CFBundleTypeRole: Editor
             CFBundleURLSchemes:
-              - com.googleusercontent.apps.street-player-simulator-local
+              - com.googleusercontent.apps.214782005328-pn4pucf1apnhb3lrmdne80aln6rrllu6
         UIBackgroundModes:
           - location
         UILaunchStoryboardName: LaunchScreen
